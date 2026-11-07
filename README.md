@@ -5,6 +5,8 @@ A polysynth plugin (VST3 + CLAP) and Mac app in Rust, built with
 [vendor/README.md](vendor/README.md)). See [SPEC.md](SPEC.md) for the design
 and build order.
 
+![Patina’s editor showing the Acid Bass preset](docs/screenshot.jpg)
+
 ## Install
 
 ```sh
