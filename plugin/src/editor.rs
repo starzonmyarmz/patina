@@ -14,6 +14,9 @@ use std::time::{Duration, Instant};
 use wry::{WebView, WebViewBuilder};
 
 const SIZE: (u32, u32) = (960, 540);
+/// The traffic lights' left inset and center line in the app, matching the
+/// page's header row (14 px down, 26 px tall).
+const TRAFFIC_LIGHTS: (f64, f64) = (20.0, 27.0);
 const UI_HTML: &str = include_str!("../../ui/index.html");
 /// Set to a dev server URL (e.g. http://localhost:5173) to load the UI live.
 const DEV_URL_VAR: &str = "PATINA_UI_URL";
@@ -219,6 +222,9 @@ impl Drop for Handler {
 impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, window: &mut Window) {
         self.build_webview(window);
+        if crate::app::get().is_some() {
+            crate::chrome::place_traffic_lights(window, TRAFFIC_LIGHTS.0, TRAFFIC_LIGHTS.1);
+        }
         while let Ok(msg) = self.inbox.try_recv() {
             self.handle(&msg, window);
         }

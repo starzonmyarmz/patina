@@ -53,6 +53,43 @@ pub fn hide_title_bar(window: &Window, size: (u32, u32)) {
     }
 }
 
+/// Puts the traffic lights `left` points from the window's left edge,
+/// centered `center` points from its top, growing the title bar to fit.
+/// AppKit lays them out again on some window changes, so this runs every
+/// frame and only touches frames that moved.
+pub fn place_traffic_lights(window: &Window, left: f64, center: f64) {
+    let Some(w) = ns_window(window) else { return };
+    unsafe {
+        let buttons: [*mut Object; 3] = [0u64, 1, 2].map(|kind| msg_send![w, standardWindowButton: kind]);
+        if buttons.iter().any(|b| b.is_null()) {
+            return;
+        }
+        let close: Rect = msg_send![buttons[0], frame];
+        let minimize: Rect = msg_send![buttons[1], frame];
+        let spacing = minimize.origin.x - close.origin.x;
+        let height = 2.0 * center;
+
+        let title_bar: *mut Object = msg_send![buttons[0], superview];
+        let container: *mut Object = msg_send![title_bar, superview];
+        let window_frame: Rect = msg_send![w, frame];
+        let mut bar: Rect = msg_send![container, frame];
+        if (bar.size.height - height).abs() > 0.5 {
+            bar.size.height = height;
+            bar.origin.y = window_frame.size.height - height;
+            let _: () = msg_send![container, setFrame: bar];
+        }
+        for (i, button) in buttons.into_iter().enumerate() {
+            let mut frame: Rect = msg_send![button, frame];
+            let x = left + i as f64 * spacing;
+            let y = (height - frame.size.height) / 2.0;
+            if (frame.origin.x - x).abs() > 0.5 || (frame.origin.y - y).abs() > 0.5 {
+                frame.origin = Point { x, y };
+                let _: () = msg_send![button, setFrame: frame];
+            }
+        }
+    }
+}
+
 /// Moves the window by a drag on the page, in points with y down.
 pub fn move_by(window: &Window, dx: f64, dy: f64) {
     let Some(w) = ns_window(window) else { return };
