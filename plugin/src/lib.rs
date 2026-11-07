@@ -1,3 +1,4 @@
+pub mod audition;
 pub mod bridge;
 pub mod controls;
 mod editor;
@@ -10,6 +11,7 @@ pub mod params;
 pub mod presets;
 pub mod ratings;
 
+use audition::{Event, Events, Player};
 use engine::{Engine, Transport, CHUNK};
 use nih_plug::prelude::*;
 use controls::Controls;
@@ -23,15 +25,22 @@ pub struct ThousandSynths {
     controls: Arc<Controls>,
     engine: Engine,
     matrix_seen: u32,
+    player: Player,
+    phrase_events: Events,
+    phrase_seen: u32,
 }
 
 impl Default for ThousandSynths {
     fn default() -> Self {
+        audition::phrases();
         Self {
             params: Arc::new(ThousandParams::default()),
             controls: Arc::new(Controls::new(Library::open())),
             engine: Engine::new(48_000.0),
             matrix_seen: u32::MAX,
+            player: Player::default(),
+            phrase_events: Events::default(),
+            phrase_seen: u32::MAX,
         }
     }
 }
@@ -44,6 +53,8 @@ pub enum Task {
 impl ThousandSynths {
     fn handle(&mut self, event: NoteEvent<()>) {
         match event {
+            NoteEvent::NoteOn { note, velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
+            NoteEvent::NoteOff { note, .. } if self.controls.midi_note(note, false) => {}
             NoteEvent::NoteOn { note, velocity, .. } if velocity > 0.0 => self.engine.note_on(note, velocity),
             NoteEvent::NoteOn { note, .. } | NoteEvent::NoteOff { note, .. } => self.engine.note_off(note),
             NoteEvent::MidiPitchBend { value, .. } => self.engine.set_pitch_bend(value),
@@ -57,6 +68,31 @@ impl ThousandSynths {
                 _ => {}
             },
             _ => {}
+        }
+    }
+
+    /// Starts, restarts or stops the audition phrase, and queues its notes
+    /// for this block.
+    fn audition(&mut self, len: usize, tempo: Option<f64>) {
+        let on = self.controls.audition();
+        let generation = self.params.session_generation();
+        let new_preset = generation != self.phrase_seen;
+        self.phrase_seen = generation;
+        let restart = self.controls.take_restart() || (on && new_preset);
+        if restart || (!on && self.player.playing()) {
+            let engine = &mut self.engine;
+            self.player.stop(|key| engine.note_off(key));
+            if on {
+                self.player.start(self.params.phrase());
+            }
+        }
+        self.player.block(len, self.engine.sample_rate(), tempo, &mut self.phrase_events);
+    }
+
+    fn play(&mut self, event: Event) {
+        match event {
+            Event::On(key, velocity) => self.engine.note_on(key, velocity),
+            Event::Off(key) => self.engine.note_off(key),
         }
     }
 }
@@ -135,6 +171,8 @@ impl Plugin for ThousandSynths {
         let [left, right] = buffer.as_slice() else {
             return ProcessStatus::Normal;
         };
+        self.audition(len, t.tempo);
+        let mut phrase = 0;
         let mut event = context.next_event();
         let mut pos = 0;
         while pos < len {
@@ -145,9 +183,19 @@ impl Plugin for ThousandSynths {
                 self.handle(e);
                 event = context.next_event();
             }
+            while let Some(&(at, e)) = self.phrase_events.as_slice().get(phrase) {
+                if at as usize > pos {
+                    break;
+                }
+                self.play(e);
+                phrase += 1;
+            }
             let mut end = (pos + CHUNK).min(len);
             if let Some(e) = &event {
                 end = end.min(e.timing() as usize);
+            }
+            if let Some(&(at, _)) = self.phrase_events.as_slice().get(phrase) {
+                end = end.min(at as usize);
             }
             self.engine.update(&*self.params, transport);
             self.engine.render(&mut left[pos..end], &mut right[pos..end]);

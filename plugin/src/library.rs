@@ -26,7 +26,7 @@ struct State {
 }
 
 /// Browser order for the factory categories; others follow alphabetically.
-const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
+pub const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
 
 fn category_rank(category: &str) -> usize {
     CATEGORY_ORDER.iter().position(|c| *c == category).unwrap_or(CATEGORY_ORDER.len())

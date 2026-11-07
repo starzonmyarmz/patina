@@ -7,6 +7,38 @@ pub const PAD_FIRST_CC: u8 = 20;
 pub const PADS: u8 = 8;
 pub const PREV_PAD: usize = 6;
 pub const NEXT_PAD: usize = 7;
+/// The second pad bank's notes, as the MiniLab sends them out of the box.
+pub const RATING_FIRST_NOTE: u8 = 44;
+
+/// What the second pad bank does in audition mode, left to right.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RatingPad {
+    Keep,
+    Tweak,
+    Cut,
+    Clear,
+    Replay,
+    NextUnrated,
+    Previous,
+    Next,
+}
+
+impl RatingPad {
+    pub const ALL: [RatingPad; 8] = [
+        RatingPad::Keep,
+        RatingPad::Tweak,
+        RatingPad::Cut,
+        RatingPad::Clear,
+        RatingPad::Replay,
+        RatingPad::NextUnrated,
+        RatingPad::Previous,
+        RatingPad::Next,
+    ];
+}
+
+pub fn rating_pad(note: u8) -> Option<usize> {
+    (RATING_FIRST_NOTE..RATING_FIRST_NOTE + PADS).contains(&note).then(|| (note - RATING_FIRST_NOTE) as usize)
+}
 
 /// Arturia's three relative encoder encodings, as named in MIDI Control
 /// Center.

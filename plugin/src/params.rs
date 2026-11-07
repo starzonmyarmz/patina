@@ -1,8 +1,9 @@
+use crate::audition::phrase_for;
 use crate::macros::MacroMatrix;
 use crate::presets::{matrix_from, Session};
 use nih_plug::prelude::*;
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 pub enum Kind {
@@ -250,6 +251,7 @@ pub struct ThousandParams {
     session: Mutex<Session>,
     matrix: Mutex<MacroMatrix>,
     generation: AtomicU32,
+    phrase: AtomicUsize,
 }
 
 impl Default for ThousandParams {
@@ -259,6 +261,7 @@ impl Default for ThousandParams {
             session: Mutex::default(),
             matrix: Mutex::default(),
             generation: AtomicU32::new(0),
+            phrase: AtomicUsize::new(0),
         }
     }
 }
@@ -270,6 +273,7 @@ impl ThousandParams {
 
     pub fn set_session(&self, session: Session) {
         let matrix = matrix_from(&session.macros);
+        self.phrase.store(phrase_for(&session.category), Ordering::Relaxed);
         if let Ok(mut s) = self.session.lock() {
             *s = session;
         }
@@ -282,6 +286,11 @@ impl ThousandParams {
     /// Changes whenever the session is replaced.
     pub fn session_generation(&self) -> u32 {
         self.generation.load(Ordering::Acquire)
+    }
+
+    /// The audition phrase for the session's category.
+    pub fn phrase(&self) -> usize {
+        self.phrase.load(Ordering::Relaxed)
     }
 
     pub fn ptr(&self, pid: Pid) -> ParamPtr {

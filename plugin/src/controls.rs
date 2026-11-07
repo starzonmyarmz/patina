@@ -1,13 +1,15 @@
 //! Hardware control state shared by the audio thread (which decodes MIDI),
 //! a GUI-thread task (which turns it into parameter changes) and the editor.
 
-use crate::bridge::{load_preset, ContextHost, Host};
+use crate::bridge::{current, load_preset, ContextHost, Host};
 use crate::layout::{KNOBS, PAGES};
 use crate::library::Library;
-use crate::minilab::{classify, Control, KnobMode, NEXT_PAD, PREV_PAD};
+use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, NEXT_PAD, PREV_PAD};
 use crate::params::{Pid, ThousandParams};
+use crate::presets::Preset;
+use crate::ratings::{Rating, Verdict};
 use nih_plug::prelude::GuiContext;
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 /// Encoder ticks to sweep a continuous parameter end to end.
@@ -27,6 +29,11 @@ pub struct Controls {
     order: Mutex<Vec<String>>,
     /// Partial steps for stepped parameters, per knob.
     fractions: Mutex<[f32; KNOBS]>,
+    audition: AtomicBool,
+    /// The rating pad pressed last, plus one; zero for none.
+    rating_pad: AtomicU8,
+    restart_phrase: AtomicBool,
+    ratings_generation: AtomicU32,
 }
 
 impl Controls {
@@ -42,6 +49,10 @@ impl Controls {
             library: Mutex::new(library),
             order: Mutex::new(Vec::new()),
             fractions: Mutex::new([0.0; KNOBS]),
+            audition: AtomicBool::new(false),
+            rating_pad: AtomicU8::new(0),
+            restart_phrase: AtomicBool::new(false),
+            ratings_generation: AtomicU32::new(0),
         }
     }
 
@@ -70,6 +81,29 @@ impl Controls {
 
     pub fn set_order(&self, keys: Vec<String>) {
         *self.order.lock().unwrap_or_else(|e| e.into_inner()) = keys;
+    }
+
+    pub fn audition(&self) -> bool {
+        self.audition.load(Ordering::Relaxed)
+    }
+
+    pub fn set_audition(&self, on: bool) {
+        self.audition.store(on, Ordering::Relaxed);
+        self.restart_phrase.store(true, Ordering::Release);
+    }
+
+    pub fn replay(&self) {
+        self.restart_phrase.store(true, Ordering::Release);
+    }
+
+    /// Audio thread.
+    pub fn take_restart(&self) -> bool {
+        self.restart_phrase.swap(false, Ordering::AcqRel)
+    }
+
+    /// Changes whenever a rating changes.
+    pub fn ratings_generation(&self) -> u32 {
+        self.ratings_generation.load(Ordering::Acquire)
     }
 
     pub fn keep_context(&self, context: impl FnOnce() -> Arc<dyn GuiContext>) {
@@ -104,6 +138,20 @@ impl Controls {
         true
     }
 
+    /// Audio thread. In audition mode the second pad bank rates instead of
+    /// playing; returns true for notes it takes.
+    pub fn midi_note(&self, note: u8, down: bool) -> bool {
+        if !self.audition() {
+            return false;
+        }
+        let Some(pad) = rating_pad(note) else { return false };
+        if down {
+            self.rating_pad.store(pad as u8 + 1, Ordering::Release);
+            self.pending.store(true, Ordering::Release);
+        }
+        true
+    }
+
     /// Audio thread: true when there's work for `run`.
     pub fn take_pending(&self) -> bool {
         self.pending.swap(false, Ordering::AcqRel)
@@ -118,6 +166,7 @@ impl Controls {
             None => {
                 self.ticks.iter().for_each(|t| t.store(0, Ordering::Relaxed));
                 self.step.store(0, Ordering::Relaxed);
+                self.rating_pad.store(0, Ordering::Relaxed);
             }
         }
     }
@@ -143,9 +192,32 @@ impl Controls {
         if step != 0 {
             self.step_preset(params, step, host);
         }
+        let pad = self.rating_pad.swap(0, Ordering::AcqRel);
+        if pad > 0 && self.audition() {
+            let verdict = match RatingPad::ALL[pad as usize - 1] {
+                RatingPad::Keep => Some(Verdict::Keep),
+                RatingPad::Tweak => Some(Verdict::Tweak),
+                RatingPad::Cut => Some(Verdict::Cut),
+                RatingPad::Clear => None,
+                RatingPad::Replay => return self.replay(),
+                RatingPad::NextUnrated => return self.next_unrated(params, host),
+                RatingPad::Previous => return self.step_preset(params, -1, host),
+                RatingPad::Next => return self.step_preset(params, 1, host),
+            };
+            let _ = self.rate(params, verdict, host);
+        }
     }
 
-    fn step_preset(&self, params: &ThousandParams, step: i32, host: &mut impl Host) {
+    pub fn step_preset(&self, params: &ThousandParams, step: i32, host: &mut impl Host) {
+        self.step_to(params, step, host, |_, _| true);
+    }
+
+    pub fn next_unrated(&self, params: &ThousandParams, host: &mut impl Host) {
+        self.step_to(params, 1, host, |library, key| key.starts_with("factory/") && library.rating(key).is_none());
+    }
+
+    /// Loads the next preset in the browser's order that `wanted` accepts.
+    fn step_to(&self, params: &ThousandParams, step: i32, host: &mut impl Host, wanted: impl Fn(&Library, &str) -> bool) {
         let library = self.library();
         let order = self.order.lock().map(|o| o.clone()).unwrap_or_default();
         let keys = if order.is_empty() { library.keys() } else { order };
@@ -154,12 +226,42 @@ impl Controls {
             return;
         }
         let current = library.key_of(&params.session()).and_then(|k| keys.iter().position(|x| *x == k));
-        let next = match current {
-            Some(i) => (i as i32 + step).rem_euclid(len),
+        let mut next = match current {
+            Some(i) => i as i32 + step,
             None if step > 0 => 0,
             None => len - 1,
         };
-        load_preset(params, &library, &keys[next as usize], host);
+        for _ in 0..len {
+            let key = &keys[next.rem_euclid(len) as usize];
+            if wanted(&library, key) {
+                load_preset(params, &library, key, host);
+                return;
+            }
+            next += step.signum();
+        }
+    }
+
+    /// Rates the loaded factory preset, then moves on to the next one. A
+    /// tweak keeps the edited sound when the knobs moved.
+    pub fn rate(&self, params: &ThousandParams, verdict: Option<Verdict>, host: &mut impl Host) -> Result<(), String> {
+        let session = params.session();
+        let key = self.library().key_of(&session).filter(|k| k.starts_with("factory/"));
+        let Some(key) = key else {
+            return Err("Only factory presets can be rated".into());
+        };
+        let values = current(host);
+        let edited = session.saved.as_ref().is_some_and(|p| p.differs_from(&values, &session.macros));
+        let rating = verdict.map(|verdict| Rating {
+            verdict,
+            edit: (verdict == Verdict::Tweak && edited)
+                .then(|| Preset::capture(&session.name, &session.category, &values, &session.macros)),
+        });
+        self.library().rate(&key, rating).map_err(|e| format!("Couldn’t save the rating: {e}"))?;
+        self.ratings_generation.fetch_add(1, Ordering::Release);
+        if verdict.is_some() {
+            self.step_preset(params, 1, host);
+        }
+        Ok(())
     }
 }
 
@@ -183,7 +285,7 @@ fn turn(pid: Pid, current: f32, ticks: i32, fraction: &mut f32) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::params::COUNT;
+    use crate::params::{Values, COUNT};
     use std::path::PathBuf;
 
     struct FakeHost([f32; COUNT]);
@@ -259,6 +361,60 @@ mod tests {
         controls.midi_cc(102, 70);
         controls.run(&params);
         assert_eq!(controls.ticks[0].load(Ordering::Relaxed), 0);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rating_pads_only_work_in_audition() {
+        let (root, controls, params, mut host) = setup("audition");
+        let keys = controls.library().keys();
+        load_preset(&params, &controls.library(), &keys[0], &mut host);
+        assert!(!controls.midi_note(44, true));
+        controls.set_audition(true);
+        assert!(controls.midi_note(44, true));
+        assert!(controls.midi_note(44, false));
+        assert!(!controls.midi_note(60, true));
+        controls.run_with(&params, &mut host);
+        assert_eq!(controls.library().rating(&keys[0]).map(|r| r.verdict), Some(Verdict::Keep));
+        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[1]));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_tweak_keeps_the_edit() {
+        let (root, controls, params, mut host) = setup("tweak");
+        let keys = controls.library().keys();
+        load_preset(&params, &controls.library(), &keys[0], &mut host);
+        controls.rate(&params, Some(Verdict::Tweak), &mut host).unwrap();
+        assert!(controls.library().rating(&keys[0]).unwrap().edit.is_none());
+
+        load_preset(&params, &controls.library(), &keys[0], &mut host);
+        let cutoff = host.normalized(Pid::Cutoff);
+        host.set(Pid::Cutoff, (cutoff + 0.2) % 1.0);
+        controls.rate(&params, Some(Verdict::Tweak), &mut host).unwrap();
+        let edit = controls.library().rating(&keys[0]).unwrap().edit.clone().unwrap();
+        let spec = Pid::Cutoff.spec();
+        assert!((spec.normalize(edit.values().get(Pid::Cutoff)) - (cutoff + 0.2) % 1.0).abs() < 1e-3);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn next_unrated_skips_rated_presets() {
+        let (root, controls, params, mut host) = setup("unrated");
+        let keys = controls.library().keys();
+        load_preset(&params, &controls.library(), &keys[0], &mut host);
+        for key in &keys[1..3] {
+            controls.library().rate(key, Some(Rating { verdict: Verdict::Cut, edit: None })).unwrap();
+        }
+        controls.next_unrated(&params, &mut host);
+        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[3]));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn only_factory_presets_are_rated() {
+        let (root, controls, params, mut host) = setup("rate-new");
+        assert!(controls.rate(&params, Some(Verdict::Keep), &mut host).is_err());
         let _ = std::fs::remove_dir_all(root);
     }
 

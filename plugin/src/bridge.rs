@@ -8,6 +8,7 @@ use crate::minilab::KnobMode;
 use crate::macros::MACROS;
 use crate::params::{Kind, Pid, PlainValues, ThousandParams, Values, COUNT};
 use crate::presets::{Preset, Session, Source};
+use crate::ratings::Verdict;
 use nih_plug::prelude::{FloatRange, GuiContext};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -67,6 +68,8 @@ pub struct Bridge {
     sent_session: Value,
     sent_page: usize,
     seen_generation: u32,
+    sent_audition: Option<bool>,
+    seen_ratings: u32,
     /// The edit, put aside while compare shows the saved preset.
     stashed: Option<PlainValues>,
 }
@@ -80,6 +83,8 @@ impl Bridge {
             sent_session: Value::Null,
             sent_page: usize::MAX,
             seen_generation: u32::MAX,
+            sent_audition: None,
+            seen_ratings: 0,
             stashed: None,
         }
     }
@@ -92,6 +97,8 @@ impl Bridge {
                 self.sent = [f32::NAN; COUNT];
                 self.sent_session = Value::Null;
                 self.sent_page = usize::MAX;
+                self.sent_audition = None;
+                self.seen_ratings = self.controls.ratings_generation();
                 out.push(json!({ "type": "init", "params": describe_params(), "pages": describe_pages() }));
                 out.push(self.presets_message());
                 out.push(self.settings_message());
@@ -140,6 +147,18 @@ impl Bridge {
                 }
             }
             ("compare", _) => self.compare(msg["on"].as_bool().unwrap_or(false), host),
+            ("audition", _) => self.controls.set_audition(msg["on"].as_bool().unwrap_or(false)),
+            ("rate", _) => {
+                if let Some(edit) = self.stashed.take() {
+                    apply(host, &edit);
+                }
+                let verdict = msg["verdict"].as_str().and_then(Verdict::from_name);
+                if let Err(message) = self.controls.rate(&self.params, verdict, host) {
+                    out.push(json!({ "type": "error", "message": message }));
+                }
+            }
+            ("replay", _) => self.controls.replay(),
+            ("nextUnrated", _) => self.controls.next_unrated(&self.params, host),
             _ => {}
         }
         self.poll(host, true, out);
@@ -161,6 +180,16 @@ impl Bridge {
             if !changes.is_empty() {
                 out.push(json!({ "type": "values", "values": changes }));
             }
+        }
+        let audition = self.controls.audition();
+        if self.sent_audition != Some(audition) {
+            self.sent_audition = Some(audition);
+            out.push(json!({ "type": "audition", "on": audition }));
+        }
+        let ratings = self.controls.ratings_generation();
+        if ratings != self.seen_ratings {
+            self.seen_ratings = ratings;
+            out.push(self.presets_message());
         }
         let page = self.controls.page();
         if page != self.sent_page {
@@ -241,6 +270,8 @@ impl Bridge {
                 Some(saved) => saved.differs_from(&current(host), &session.macros),
                 None => true,
             };
+        let key = self.controls.library().key_of(&session);
+        let rating = key.as_deref().and_then(|k| self.controls.library().rating(k).map(|r| r.verdict.name()));
         let macros: Vec<&str> = (0..MACROS).map(|i| session.macros.get(i).map_or("", |m| m.name.as_str())).collect();
         let source = match session.source {
             Source::New => "new",
@@ -252,7 +283,8 @@ impl Bridge {
             "name": session.name,
             "category": session.category,
             "source": source,
-            "key": self.controls.library().key_of(&session),
+            "key": key,
+            "rating": rating,
             "dirty": dirty,
             "comparing": comparing,
             "macros": macros,
@@ -260,7 +292,7 @@ impl Bridge {
     }
 }
 
-fn current(host: &impl Host) -> PlainValues {
+pub fn current(host: &impl Host) -> PlainValues {
     PlainValues(std::array::from_fn(|i| {
         let spec = Pid::ALL[i].spec();
         spec.denormalize(host.normalized(Pid::ALL[i]))
@@ -383,9 +415,33 @@ mod tests {
         let (root, mut bridge, mut host) = setup("ready");
         let out = send(&mut bridge, &mut host, json!({ "type": "ready" }));
         let types: Vec<_> = out.iter().map(|m| m["type"].as_str().unwrap()).collect();
-        assert_eq!(types, ["init", "presets", "settings", "values", "page", "session"]);
+        assert_eq!(types, ["init", "presets", "settings", "values", "audition", "page", "session"]);
         assert_eq!(out[0]["params"].as_array().unwrap().len(), COUNT);
         assert_eq!(out[3]["values"].as_array().unwrap().len(), COUNT);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rating_in_audition_moves_on_and_resends_presets() {
+        let (root, mut bridge, mut host) = setup("rate");
+        send(&mut bridge, &mut host, json!({ "type": "ready" }));
+        let out = send(&mut bridge, &mut host, json!({ "type": "rate", "verdict": "keep" }));
+        assert_eq!(out[0]["type"], "error");
+
+        let out = send(&mut bridge, &mut host, json!({ "type": "audition", "on": true }));
+        assert!(out.contains(&json!({ "type": "audition", "on": true })));
+        let first = bridge.controls.library().keys()[0].clone();
+        send(&mut bridge, &mut host, json!({ "type": "load", "key": first }));
+        let out = send(&mut bridge, &mut host, json!({ "type": "rate", "verdict": "cut" }));
+        let presets = out.iter().find(|m| m["type"] == "presets").expect("a presets message");
+        let listed = presets["presets"].as_array().unwrap().iter().find(|p| p["key"] == first.as_str()).unwrap();
+        assert_eq!(listed["rating"], "cut");
+        assert_ne!(session(&out)["key"], first.as_str());
+
+        send(&mut bridge, &mut host, json!({ "type": "load", "key": first }));
+        let out = send(&mut bridge, &mut host, json!({ "type": "rate", "verdict": null }));
+        assert_eq!(session(&out)["rating"], Value::Null);
+        assert_eq!(session(&out)["key"], first.as_str());
         let _ = std::fs::remove_dir_all(root);
     }
 
