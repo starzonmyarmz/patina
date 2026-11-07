@@ -256,13 +256,17 @@ pub struct ThousandParams {
 
 impl Default for ThousandParams {
     fn default() -> Self {
-        Self {
+        let params = Self {
             slots: SPECS.iter().map(build).collect(),
             session: Mutex::default(),
             matrix: Mutex::default(),
             generation: AtomicU32::new(0),
             phrase: AtomicUsize::new(0),
-        }
+        };
+        // std's Mutex allocates on first lock on macOS; take that hit here, not
+        // on the audio thread's first try_lock.
+        drop(params.matrix.lock());
+        params
     }
 }
 
