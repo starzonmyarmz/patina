@@ -50,6 +50,10 @@ macro_rules! params {
         #[repr(usize)]
         pub enum Pid { $( $( $pid, )* )* }
 
+        impl Pid {
+            pub const ALL: &'static [Pid] = &[$( $( Pid::$pid, )* )*];
+        }
+
         pub const SPECS: &[Spec] = &[$( $( Spec {
             id: $id, name: $name, group: $group, kind: $kind,
             default: $default as f32, unit: $unit, jsfx: $jsfx,
@@ -178,6 +182,52 @@ params! {
 }
 
 pub const COUNT: usize = SPECS.len();
+
+impl Pid {
+    pub fn spec(self) -> &'static Spec {
+        &SPECS[self as usize]
+    }
+
+    pub fn from_id(id: &str) -> Option<Pid> {
+        SPECS.iter().position(|s| s.id == id).map(|i| Pid::ALL[i])
+    }
+}
+
+impl Spec {
+    fn bounds(&self) -> (f32, f32) {
+        match self.kind {
+            Kind::Float { min, max, .. } => (min, max),
+            Kind::Int { min, max } => (min as f32, max as f32),
+            Kind::Enum(names) => (0.0, names.len() as f32 - 1.0),
+            Kind::Bool => (0.0, 1.0),
+        }
+    }
+
+    /// Plain value to 0..1, matching nih-plug's own mapping.
+    pub fn normalize(&self, plain: f32) -> f32 {
+        let (min, max) = self.bounds();
+        let linear = ((plain.clamp(min, max) - min) / (max - min)).clamp(0.0, 1.0);
+        match self.kind {
+            Kind::Float { skew, .. } if skew != 0.0 => linear.powf(FloatRange::skew_factor(skew)),
+            _ => linear,
+        }
+    }
+
+    /// 0..1 to a plain value; stepped kinds round to the nearest step.
+    pub fn denormalize(&self, normalized: f32) -> f32 {
+        let (min, max) = self.bounds();
+        let n = normalized.clamp(0.0, 1.0);
+        match self.kind {
+            Kind::Float { skew, .. } if skew != 0.0 => n.powf(FloatRange::skew_factor(skew).recip()) * (max - min) + min,
+            Kind::Float { .. } => n * (max - min) + min,
+            _ => (n * (max - min) + min).round(),
+        }
+    }
+
+    pub fn clamp(&self, plain: f32) -> f32 {
+        self.denormalize(self.normalize(plain))
+    }
+}
 
 pub enum Slot {
     Float(FloatParam),
@@ -309,13 +359,32 @@ mod tests {
     #[test]
     fn defaults_are_in_range() {
         for s in SPECS {
-            let (lo, hi) = match s.kind {
-                Kind::Float { min, max, .. } => (min, max),
-                Kind::Int { min, max } => (min as f32, max as f32),
-                Kind::Enum(names) => (0.0, names.len() as f32 - 1.0),
-                Kind::Bool => (0.0, 1.0),
-            };
+            let (lo, hi) = s.bounds();
             assert!((lo..=hi).contains(&s.default), "{} default {} outside {lo}..{hi}", s.id, s.default);
+        }
+    }
+
+    #[test]
+    fn normalization_matches_nih_plug() {
+        let params = ThousandParams::default();
+        for (spec, slot) in SPECS.iter().zip(&params.slots) {
+            for step in 0..=20 {
+                let n = step as f32 / 20.0;
+                let plain = spec.denormalize(n);
+                let theirs = match slot {
+                    Slot::Float(p) => p.preview_normalized(plain),
+                    Slot::Int(p) => p.preview_normalized(plain as i32),
+                    Slot::Bool(p) => p.preview_normalized(plain >= 0.5),
+                };
+                assert!((spec.normalize(plain) - theirs).abs() < 1e-4, "{} at {n}", spec.id);
+            }
+        }
+    }
+
+    #[test]
+    fn ids_round_trip() {
+        for &pid in Pid::ALL {
+            assert_eq!(Pid::from_id(pid.spec().id), Some(pid));
         }
     }
 
