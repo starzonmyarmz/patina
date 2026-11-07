@@ -142,6 +142,12 @@ exact settings go in `docs/minilab-setup.md` (step 5).
    VST3 handles SysEx output poorly, so use the CLAP build.
 2. **Webview crate maturity.** nih-plug's webview support is a small community
    crate. The spike in step 4 decides whether it holds up or needs a fork.
-3. **Curation needs ears.** Rules and automated checks (silence, clipping, DC)
+3. **nih-plug fails 4 clap-validator 0.4 state tests.** After loading state
+   it never asks the host to rescan parameter values (3 tests; REAPER re-reads
+   them anyway), and it trusts the state's length prefix, so random bytes make
+   it try a huge allocation and abort (1 test; only corrupt projects hit
+   this). Both need a nih-plug patch. Do it if step 4 forks nih-plug for the
+   webview anyway.
+4. **Curation needs ears.** Rules and automated checks (silence, clipping, DC)
    catch broken presets, not boring ones. Audition mode is how the bank gets
    good.
