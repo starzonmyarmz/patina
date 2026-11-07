@@ -273,6 +273,11 @@ impl ThousandParams {
         self.generation.fetch_add(1, Ordering::Release);
     }
 
+    /// Changes whenever the session is replaced.
+    pub fn session_generation(&self) -> u32 {
+        self.generation.load(Ordering::Acquire)
+    }
+
     pub fn ptr(&self, pid: Pid) -> ParamPtr {
         match &self.slots[pid as usize] {
             Slot::Float(p) => p.as_ptr(),

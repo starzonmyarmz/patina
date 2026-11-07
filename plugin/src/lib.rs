@@ -1,3 +1,4 @@
+pub mod bridge;
 mod editor;
 pub mod engine;
 pub mod layout;

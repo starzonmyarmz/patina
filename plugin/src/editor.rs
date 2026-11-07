@@ -1,4 +1,6 @@
-use crate::params::{Kind, Pid, ThousandParams, COUNT};
+use crate::bridge::{Bridge, Host};
+use crate::library::Library;
+use crate::params::{Pid, ThousandParams};
 use baseview::{Event, EventStatus, Size, Window, WindowHandle, WindowOpenOptions, WindowScalePolicy};
 use keyboard_types::{KeyState, Modifiers};
 use nih_plug::prelude::{Editor, GuiContext, ParentWindowHandle};
@@ -77,7 +79,8 @@ impl Editor for WebEditor {
                 Err(_) => builder.with_html(UI_HTML),
             };
             let webview = builder.and_then(|b| b.build()).ok();
-            Handler { context, params, changed, webview, inbox, sent: [f32::NAN; COUNT], ready: false, page_has_focus: false }
+            let bridge = Bridge::new(params.clone(), Library::open());
+            Handler { context, params, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
         });
         Box::new(Open(handle))
     }
@@ -109,15 +112,38 @@ struct Handler {
     changed: Arc<AtomicBool>,
     webview: Option<WebView>,
     inbox: Receiver<String>,
-    sent: [f32; COUNT],
+    bridge: Bridge,
     ready: bool,
     /// Something on the page (a knob, the search box) has keyboard focus.
     page_has_focus: bool,
 }
 
+struct Gui<'a> {
+    context: &'a dyn GuiContext,
+    params: &'a ThousandParams,
+}
+
+impl Host for Gui<'_> {
+    fn normalized(&self, pid: Pid) -> f32 {
+        self.params.normalized(pid)
+    }
+    fn begin(&mut self, pid: Pid) {
+        unsafe { self.context.raw_begin_set_parameter(self.params.ptr(pid)) }
+    }
+    fn set(&mut self, pid: Pid, normalized: f32) {
+        unsafe { self.context.raw_set_parameter_normalized(self.params.ptr(pid), normalized) }
+    }
+    fn end(&mut self, pid: Pid) {
+        unsafe { self.context.raw_end_set_parameter(self.params.ptr(pid)) }
+    }
+}
+
 impl Handler {
-    fn send(&self, message: Value) {
-        if let Some(webview) = &self.webview {
+    fn send(&self, messages: Vec<Value>) {
+        let Some(webview) = &self.webview else {
+            return;
+        };
+        for message in messages {
             let _ = webview.evaluate_script(&format!("window.onPluginMessage?.({message})"));
         }
     }
@@ -126,63 +152,21 @@ impl Handler {
         let Ok(msg) = serde_json::from_str::<Value>(raw) else {
             return;
         };
-        let pid = msg["id"].as_str().and_then(Pid::from_id);
-        match (msg["type"].as_str(), pid) {
-            (Some("ready"), _) => {
-                self.ready = true;
-                self.sent = [f32::NAN; COUNT];
-                self.send(json!({ "type": "init", "params": self.describe() }));
-                self.changed.store(true, Ordering::Release);
-            }
-            (Some("focus"), _) => {
+        match msg["type"].as_str() {
+            Some("focus") => {
                 if let Some(webview) = &self.webview {
                     webview.focus();
                 }
             }
-            (Some("keys"), _) => self.page_has_focus = msg["active"].as_bool().unwrap_or(false),
-            (Some("begin"), Some(pid)) => unsafe { self.context.raw_begin_set_parameter(self.params.ptr(pid)) },
-            (Some("set"), Some(pid)) => {
-                if let Some(v) = msg["value"].as_f64() {
-                    unsafe { self.context.raw_set_parameter_normalized(self.params.ptr(pid), v.clamp(0.0, 1.0) as f32) }
-                }
+            Some("keys") => self.page_has_focus = msg["active"].as_bool().unwrap_or(false),
+            Some(kind) => {
+                self.ready |= kind == "ready";
+                let mut out = Vec::new();
+                let mut gui = Gui { context: &*self.context, params: &self.params };
+                self.bridge.handle(&msg, &mut gui, &mut out);
+                self.send(out);
             }
-            (Some("end"), Some(pid)) => unsafe { self.context.raw_end_set_parameter(self.params.ptr(pid)) },
-            _ => {}
-        }
-    }
-
-    fn describe(&self) -> Vec<Value> {
-        Pid::ALL
-            .iter()
-            .map(|&pid| {
-                let spec = pid.spec();
-                let (kind, options, steps) = match spec.kind {
-                    Kind::Float { .. } => ("float", Value::Null, 0),
-                    Kind::Int { min, max } => ("int", Value::Null, max - min),
-                    Kind::Enum(names) => ("enum", json!(names), names.len() as i32 - 1),
-                    Kind::Bool => ("bool", Value::Null, 1),
-                };
-                json!({
-                    "id": spec.id, "name": spec.name, "group": spec.group, "kind": kind,
-                    "options": options, "steps": steps,
-                    "default": spec.normalize(spec.default),
-                })
-            })
-            .collect()
-    }
-
-    fn push_changes(&mut self) {
-        let mut changes = Vec::new();
-        for &pid in Pid::ALL {
-            let value = self.params.normalized(pid);
-            let last = &mut self.sent[pid as usize];
-            if *last != value {
-                *last = value;
-                changes.push(json!({ "id": pid.spec().id, "value": value, "text": self.params.display(pid, value) }));
-            }
-        }
-        if !changes.is_empty() {
-            self.send(json!({ "type": "values", "values": changes }));
+            None => {}
         }
     }
 }
@@ -192,8 +176,12 @@ impl baseview::WindowHandler for Handler {
         while let Ok(msg) = self.inbox.try_recv() {
             self.handle(&msg);
         }
-        if self.ready && self.changed.swap(false, Ordering::AcqRel) {
-            self.push_changes();
+        if self.ready {
+            let changed = self.changed.swap(false, Ordering::AcqRel);
+            let mut out = Vec::new();
+            let gui = Gui { context: &*self.context, params: &self.params };
+            self.bridge.poll(&gui, changed, &mut out);
+            self.send(out);
         }
     }
 
@@ -207,7 +195,7 @@ impl baseview::WindowHandler for Handler {
         if !self.page_has_focus {
             return EventStatus::Ignored;
         }
-        self.send(json!({
+        self.send(vec![json!({
             "type": "key",
             "event": if e.state == KeyState::Down { "keydown" } else { "keyup" },
             "key": e.key.to_string(),
@@ -217,7 +205,7 @@ impl baseview::WindowHandler for Handler {
             "altKey": e.modifiers.contains(Modifiers::ALT),
             "ctrlKey": e.modifiers.contains(Modifiers::CONTROL),
             "metaKey": e.modifiers.contains(Modifiers::META),
-        }));
+        })]);
         EventStatus::Captured
     }
 }
