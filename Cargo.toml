@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["plugin", "presetgen", "xtask"]
+exclude = ["vendor"]
 
 [profile.release]
 lto = "thin"
@@ -10,3 +11,6 @@ strip = "symbols"
 inherits = "release"
 debug = true
 strip = "none"
+
+[patch."https://github.com/robbert-vdh/nih-plug"]
+nih_plug = { path = "vendor/nih_plug" }
