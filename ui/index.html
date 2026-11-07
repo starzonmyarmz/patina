@@ -7,12 +7,23 @@
   :root {
     --panel: #e8e6e1;
     --panel-edge: #d6d3cc;
+    --panel-deep: #c9c5bc;
+    --key-top: #f5f4f0;
+    --key-bottom: #dcd9d2;
     --ink: #1d1d1b;
     --muted: #8a877f;
     --screen: #0d0d0d;
+    --screen-ink: #f2f2f2;
+    --screen-dim: #5a5955;
     --orange: #ff5a1f;
     --blue: #2f6cf6;
-    --knob-size: 96px;
+    --green: #22a861;
+    --white: #f7f6f2;
+    --track: #cfccc4;
+    --gutter: 24px;
+    --cap: 58px;
+    --ring: 4px;
+    --radius: 6px;
   }
 
   * { box-sizing: border-box; }
@@ -27,169 +38,567 @@
     user-select: none;
     -webkit-user-select: none;
     overflow: hidden;
+    cursor: default;
   }
 
-  main {
+  button, input, select {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 2px;
+  }
+
+  .app {
+    position: relative;
     display: grid;
-    gap: 24px;
-    place-content: center;
-    justify-items: center;
+    grid-template-rows: auto auto 1fr;
+    gap: 14px;
     height: 100%;
+    padding: 14px var(--gutter) 16px;
+  }
+
+  .key {
+    border: 0;
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    background: linear-gradient(var(--key-top), var(--key-bottom));
+    box-shadow:
+      0 2px 0 var(--panel-deep),
+      0 3px 6px rgb(0 0 0 / 0.12),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+    text-transform: lowercase;
+
+    &:active, &[aria-pressed="true"], &[aria-expanded="true"] {
+      translate: 0 1px;
+      box-shadow: 0 1px 0 var(--panel-deep), inset 0 1px 2px rgb(0 0 0 / 0.15);
+    }
+
+    &[aria-pressed="true"], &[aria-expanded="true"] {
+      background: var(--ink);
+      color: var(--panel);
+    }
+
+    &:disabled {
+      color: var(--muted);
+      opacity: 0.6;
+    }
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+
+    & .brand {
+      font-weight: 700;
+      text-transform: lowercase;
+      letter-spacing: 0.12em;
+
+      & span { color: var(--orange); }
+    }
+
+    & .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: end;
+    }
+  }
+
+  .preset {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    & .name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 280px;
+      justify-content: center;
+      text-transform: none;
+    }
+
+    & .dot {
+      width: 7px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--orange);
+      visibility: hidden;
+    }
+
+    &.dirty .dot { visibility: visible; }
+
+    & .category { color: var(--muted); }
+  }
+
+  .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--gutter);
+    height: 150px;
   }
 
   .screen {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    min-width: 0;
+    padding: 10px 14px;
+    border-radius: var(--radius);
     background: var(--screen);
-    color: #f2f2f2;
-    border-radius: 6px;
-    padding: 12px 16px;
-    width: 320px;
-    box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.6);
+    color: var(--screen-ink);
+    box-shadow:
+      inset 0 2px 6px rgb(0 0 0 / 0.6),
+      0 1px 0 rgb(255 255 255 / 0.7);
 
-    & .label { color: var(--orange); text-transform: uppercase; }
-    & .value { font-size: 20px; }
+    & .line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      white-space: nowrap;
+    }
+
+    & .page-name { color: var(--orange); text-transform: uppercase; }
+    & .dim { color: var(--screen-dim); }
+    & .value { font-variant-numeric: tabular-nums; }
+
+    & .graph {
+      position: relative;
+
+      & canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+
+  .pages {
+    display: grid;
+    grid-template-columns: repeat(3, 76px);
+    gap: 10px;
+
+    & .key {
+      display: grid;
+      align-content: space-between;
+      justify-items: start;
+      padding: 8px 10px;
+
+      & small { color: var(--muted); }
+    }
+
+    & .key[aria-selected="true"] {
+      background: var(--ink);
+      color: var(--panel);
+      translate: 0 1px;
+      box-shadow: 0 1px 0 var(--panel-deep), inset 0 1px 2px rgb(0 0 0 / 0.3);
+
+      & small { color: var(--orange); }
+    }
+  }
+
+  .knobs {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    min-height: 0;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    column-gap: 8px;
+  }
+
+  .section {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-template-rows: auto 1fr;
+    row-gap: 8px;
+
+    & h2 {
+      grid-column: 1 / -1;
+      margin: 0;
+      padding-block-end: 3px;
+      border-block-end: 1px solid var(--panel-deep);
+      font: inherit;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
   }
 
   .knob {
     display: grid;
-    gap: 8px;
     justify-items: center;
+    align-content: start;
+    gap: 6px;
     touch-action: none;
     cursor: ns-resize;
+    border-radius: var(--radius);
+    min-width: 0;
 
-    & .cap {
-      width: var(--knob-size);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, #5b8cff, var(--blue) 55%, #1f4fc0);
-      box-shadow:
-        0 6px 10px rgb(0 0 0 / 0.25),
-        0 1px 0 rgb(255 255 255 / 0.6) inset,
-        0 -3px 6px rgb(0 0 0 / 0.25) inset;
-      position: relative;
+    &:focus-visible {
+      outline-offset: 0;
     }
 
-    & .cap::after {
-      content: "";
+    & .dial {
+      position: relative;
+      width: calc(var(--cap) + 4 * var(--ring));
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    & .arc {
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      rotate: calc(-135deg + var(--turn, 0.5) * 270deg);
-      background: linear-gradient(#fff, #fff) center 8px / 4px 22% no-repeat;
+      background: conic-gradient(
+        from -135deg,
+        var(--track) 0deg calc(var(--lo, 0) * 270deg),
+        var(--ink) calc(var(--lo, 0) * 270deg) calc(var(--hi, 0) * 270deg),
+        var(--track) calc(var(--hi, 0) * 270deg) 270deg,
+        transparent 270deg
+      );
+      mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring)), #000 calc(100% - var(--ring)));
     }
 
-    &:focus-visible .cap {
-      outline: 2px solid var(--orange);
-      outline-offset: 4px;
+    & .cap {
+      position: relative;
+      width: var(--cap);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, var(--hl), var(--base) 55%, var(--low));
+      box-shadow:
+        0 5px 8px rgb(0 0 0 / 0.25),
+        0 1px 0 rgb(255 255 255 / 0.6) inset,
+        0 -3px 6px rgb(0 0 0 / 0.2) inset;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        rotate: calc(-135deg + var(--turn, 0) * 270deg);
+        background: linear-gradient(var(--pointer), var(--pointer)) center 6px / 4px 24% no-repeat;
+      }
     }
 
-    & .name { color: var(--muted); text-transform: uppercase; }
+    &[data-color="blue"] .cap { --hl: #5b8cff; --base: var(--blue); --low: #1f4fc0; --pointer: #fff; }
+    &[data-color="green"] .cap { --hl: #4fd08a; --base: var(--green); --low: #157a45; --pointer: #fff; }
+    &[data-color="white"] .cap { --hl: #fff; --base: var(--white); --low: #cfcbc2; --pointer: var(--ink); }
+    &[data-color="orange"] .cap { --hl: #ff8a5c; --base: var(--orange); --low: #c93d0b; --pointer: #fff; }
+
+    & .label, & .text {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & .label { text-transform: uppercase; color: var(--muted); }
+    & .text { font-variant-numeric: tabular-nums; }
+
+    &.unused { opacity: 0.45; }
   }
 
-  .choices {
-    display: flex;
-    gap: 6px;
+  .browser {
+    position: absolute;
+    inset: 54px var(--gutter) 16px;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 16px;
+    padding: 14px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: 0 0 0 1px var(--panel-deep), 0 12px 32px rgb(0 0 0 / 0.18);
 
-    & button {
-      font: inherit;
-      letter-spacing: inherit;
+    &[hidden] { display: none; }
+
+    & nav {
+      display: grid;
+      align-content: start;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    & .filter {
+      display: flex;
+      justify-content: space-between;
       border: 0;
       border-radius: 4px;
-      padding: 6px 10px;
-      background: var(--panel-edge);
-      color: var(--ink);
-      box-shadow: 0 2px 0 rgb(0 0 0 / 0.15);
+      padding: 5px 8px;
+      background: transparent;
+      text-align: start;
+
+      & span { color: var(--muted); }
+
+      &[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--panel);
+
+        & span { color: var(--panel-deep); }
+      }
     }
 
-    & button[aria-pressed="true"] {
-      background: var(--ink);
-      color: var(--panel);
+    & .list-pane {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-height: 0;
     }
+
+    & .search {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    & input[type="search"] {
+      flex: 1;
+      border: 0;
+      border-radius: 4px;
+      padding: 7px 10px;
+      background: var(--white);
+      box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.15);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    & .count { color: var(--muted); }
+
+    & ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      overflow-y: auto;
+      columns: 2;
+      column-gap: 16px;
+    }
+
+    & li {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      break-inside: avoid;
+      border-radius: 4px;
+
+      &.selected { background: var(--panel-edge); }
+      &.current .load { font-weight: 700; }
+      &.current .title::before { content: "▸ "; color: var(--orange); }
+    }
+
+    & .load {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      border: 0;
+      padding: 4px 6px;
+      background: transparent;
+      text-align: start;
+
+      & .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      & .meta { color: var(--muted); white-space: nowrap; }
+    }
+
+    & .star, & .delete {
+      border: 0;
+      padding: 4px 6px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    & .star[aria-pressed="true"] { color: var(--orange); }
+    & .delete { text-transform: lowercase; }
+    & .delete.armed { color: var(--orange); }
+
+    & .empty { color: var(--muted); padding: 8px; }
+  }
+
+  dialog {
+    border: 0;
+    border-radius: var(--radius);
+    padding: 18px;
+    width: 340px;
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.3);
+
+    &::backdrop { background: rgb(29 29 27 / 0.3); }
+
+    & form {
+      display: grid;
+      gap: 12px;
+    }
+
+    & h2 {
+      margin: 0;
+      font: inherit;
+      text-transform: uppercase;
+      color: var(--orange);
+    }
+
+    & label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    & input, & select {
+      border: 0;
+      border-radius: 4px;
+      padding: 7px 10px;
+      background: var(--white);
+      box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.15);
+      color: var(--ink);
+      text-transform: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    & .note { color: var(--muted); min-height: 1.3em; margin: 0; }
+
+    & .buttons {
+      display: flex;
+      justify-content: end;
+      gap: 8px;
+    }
+  }
+
+  .toast {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 16px;
+    margin-inline: auto;
+    width: fit-content;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    background: var(--ink);
+    color: var(--panel);
+
+    &[hidden] { display: none; }
   }
 </style>
 </head>
 <body>
-<main>
-  <section class="screen" aria-live="polite">
-    <div class="label" id="screen-label">Cutoff</div>
-    <div class="value" id="screen-value">—</div>
+<div class="app">
+  <header>
+    <div class="brand">1000 synths<span>.</span></div>
+    <div class="preset">
+      <button class="key" type="button" id="prev" aria-label="Previous preset">‹</button>
+      <button class="key name" type="button" id="preset-button" aria-haspopup="dialog">
+        <span class="dot" title="Unsaved changes"></span>
+        <span id="preset-name">Untitled</span>
+        <span class="category" id="preset-category"></span>
+      </button>
+      <button class="key" type="button" id="next" aria-label="Next preset">›</button>
+    </div>
+    <div class="actions">
+      <button class="key" type="button" id="compare" aria-pressed="false" disabled>compare</button>
+      <button class="key" type="button" id="save">save</button>
+      <button class="key" type="button" id="browse" aria-expanded="false" aria-controls="browser">browse</button>
+    </div>
+  </header>
+
+  <section class="top">
+    <div class="screen">
+      <div class="line">
+        <span class="page-name" id="screen-page">Osc</span>
+        <span class="dim" id="screen-graph"></span>
+      </div>
+      <div class="graph"><canvas id="graph" aria-hidden="true"></canvas></div>
+      <div class="line" aria-live="polite">
+        <span id="screen-label">—</span>
+        <span class="value" id="screen-value"></span>
+      </div>
+    </div>
+    <nav class="pages" role="tablist" aria-label="Pages"></nav>
   </section>
 
-  <div class="knob" role="slider" tabindex="0" aria-label="Cutoff" data-param="flt_cutoff">
-    <div class="cap"></div>
-    <div class="name">Cutoff</div>
+  <section class="knobs" role="tabpanel" id="knobs"></section>
+
+  <div class="browser" id="browser" role="dialog" aria-label="Presets" hidden>
+    <nav aria-label="Categories"></nav>
+    <div class="list-pane">
+      <div class="search">
+        <input type="search" id="search" placeholder="Search presets" aria-label="Search presets" autocomplete="off" spellcheck="false">
+        <span class="count" id="count"></span>
+        <button class="key" type="button" id="close-browser">done</button>
+      </div>
+      <ul id="preset-list" aria-label="Presets"></ul>
+    </div>
   </div>
 
-  <div class="choices" role="group" aria-label="Filter type" data-param="flt_type"></div>
-</main>
+  <dialog id="save-dialog" aria-labelledby="save-title">
+    <form method="dialog">
+      <h2 id="save-title">Save preset</h2>
+      <label>Name <input id="save-name" required maxlength="60" autocomplete="off" spellcheck="false"></label>
+      <label>Category <select id="save-category"></select></label>
+      <p class="note" id="save-note"></p>
+      <div class="buttons">
+        <button class="key" type="button" id="save-cancel">cancel</button>
+        <button class="key" type="submit" id="save-confirm">save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
 
 <script>
+  const CAP_COLORS = ["blue", "green", "white", "orange"];
+  const CATEGORY_ORDER = ["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
+  const $ = (id) => document.getElementById(id);
+
   const params = new Map();
-  const dragging = new Set();
   const views = new Map();
+  const dragging = new Set();
+  let pages = [];
+  let pageIndex = 0;
+  let presets = [];
+  let session = { name: "", category: "", source: "new", key: null, dirty: false, comparing: false, macros: [] };
+  let touched = null;
+  const filter = { category: "all", query: "" };
+  let selectedKey = null;
 
   const bridge = window.ipc
     ? (msg) => window.ipc.postMessage(JSON.stringify(msg))
     : mockBridge();
 
-  function mockBridge() {
-    const values = {};
-    const reply = (msg) => setTimeout(() => window.onPluginMessage(msg));
-    const text = (id, v) => id === "flt_cutoff" ? `${Math.round(20 * 1000 ** Math.sqrt(v))} Hz` : String(v);
-    return (msg) => {
-      if (msg.type === "ready") {
-        reply({ type: "init", params: [
-          { id: "flt_cutoff", name: "Cutoff", kind: "float", steps: 0, default: 0.5 },
-          { id: "flt_type", name: "Filter type", kind: "enum", steps: 4,
-            options: ["Lowpass", "Ladder", "Comb", "Formant", "Off"], default: 0 },
-        ] });
-        reply({ type: "values", values: [
-          { id: "flt_cutoff", value: 0.5, text: text("flt_cutoff", 0.5) },
-          { id: "flt_type", value: 0, text: "Lowpass" },
-        ] });
-      }
-      if (msg.type === "set") {
-        values[msg.id] = msg.value;
-        reply({ type: "values", values: [{ id: msg.id, value: msg.value, text: text(msg.id, msg.value) }] });
-      }
-    };
+  // ---------- values ----------
+
+  function plain(p, n = p.value) {
+    const v = p.min + (p.max - p.min) * Math.pow(n, 1 / p.factor);
+    return p.kind === "float" ? v : Math.round(p.min + n * (p.max - p.min));
   }
 
-  addEventListener("pointerdown", () => bridge({ type: "focus" }), true);
-  addEventListener("focusin", () => bridge({ type: "keys", active: true }));
-  addEventListener("focusout", (e) => {
-    if (!e.relatedTarget) bridge({ type: "keys", active: false });
-  });
+  function get(id) {
+    const p = params.get(id);
+    return p ? plain(p) : 0;
+  }
 
-  window.onPluginMessage = (msg) => {
-    if (msg.type === "key") {
-      const { event, ...init } = msg;
-      delete init.type;
-      (document.activeElement ?? document.body).dispatchEvent(
-        new KeyboardEvent(event, { ...init, bubbles: true, cancelable: true }),
-      );
-      return;
-    }
-    if (msg.type === "init") {
-      msg.params.forEach((p) => params.set(p.id, { ...p, value: p.default, text: "" }));
-      buildChoices();
-    }
-    if (msg.type === "values") {
-      for (const { id, value, text } of msg.values) {
-        const p = params.get(id);
-        if (!p) continue;
-        p.text = text;
-        if (!dragging.has(id)) p.value = value;
-        views.get(id)?.(p);
-      }
-    }
-  };
+  function option(id) {
+    const p = params.get(id);
+    return p?.options?.[Math.round(plain(p))] ?? "";
+  }
 
   function setParam(id, value) {
     const p = params.get(id);
     if (!p) return;
     p.value = Math.min(1, Math.max(0, value));
     bridge({ type: "set", id, value: p.value });
+    touch(id);
     views.get(id)?.(p);
+    redraw();
   }
 
   function gesture(id, fn) {
@@ -198,74 +607,902 @@
     bridge({ type: "end", id });
   }
 
-  function showOnScreen(p) {
-    document.getElementById("screen-label").textContent = p.name;
-    document.getElementById("screen-value").textContent = p.text || "—";
+  function touch(id) {
+    touched = id;
+    showReadout();
   }
 
-  const knob = document.querySelector(".knob");
-  const knobId = knob.dataset.param;
-  views.set(knobId, (p) => {
-    knob.style.setProperty("--turn", p.value.toFixed(4));
-    knob.setAttribute("aria-valuenow", p.value.toFixed(3));
-    knob.setAttribute("aria-valuetext", p.text);
-    showOnScreen(p);
+  function showReadout() {
+    const p = params.get(touched);
+    $("screen-label").textContent = p ? p.name : "—";
+    $("screen-value").textContent = p ? p.text : "";
+  }
+
+  // ---------- messages ----------
+
+  addEventListener("pointerdown", () => bridge({ type: "focus" }), true);
+  addEventListener("focusin", () => bridge({ type: "keys", active: true }));
+  addEventListener("focusout", (e) => {
+    if (!e.relatedTarget) bridge({ type: "keys", active: false });
   });
 
-  knob.addEventListener("pointerdown", (e) => {
-    const p = params.get(knobId);
-    if (!p) return;
-    knob.setPointerCapture(e.pointerId);
-    dragging.add(knobId);
-    bridge({ type: "begin", id: knobId });
-    let lastY = e.clientY;
-    const move = (ev) => {
-      const fine = ev.shiftKey ? 0.2 : 1;
-      setParam(knobId, p.value + ((lastY - ev.clientY) / 200) * fine);
-      lastY = ev.clientY;
-    };
-    const up = () => {
-      knob.removeEventListener("pointermove", move);
-      knob.removeEventListener("pointerup", up);
-      knob.removeEventListener("pointercancel", up);
-      dragging.delete(knobId);
-      bridge({ type: "end", id: knobId });
-    };
-    knob.addEventListener("pointermove", move);
-    knob.addEventListener("pointerup", up);
-    knob.addEventListener("pointercancel", up);
-  });
+  window.onPluginMessage = (msg) => {
+    switch (msg.type) {
+      case "key": return forwardKey(msg);
+      case "init":
+        msg.params.forEach((p) => params.set(p.id, { ...p, value: p.default, text: "" }));
+        pages = msg.pages;
+        buildPageKeys();
+        showPage(pageIndex);
+        return;
+      case "presets":
+        presets = sortPresets(msg.presets);
+        renderBrowser();
+        return;
+      case "values": {
+        for (const { id, value, text } of msg.values) {
+          const p = params.get(id);
+          if (!p) continue;
+          p.text = text;
+          if (!dragging.has(id)) p.value = value;
+          views.get(id)?.(p);
+        }
+        if (msg.values.length === 1 && !dragging.has(msg.values[0].id)) touched = msg.values[0].id;
+        if (msg.values.some((v) => v.id === touched)) showReadout();
+        redraw();
+        return;
+      }
+      case "session":
+        session = msg;
+        renderSession();
+        return;
+      case "error":
+        showToast(msg.message);
+        return;
+    }
+  };
 
-  knob.addEventListener("dblclick", () => {
-    const p = params.get(knobId);
-    if (p) gesture(knobId, () => setParam(knobId, p.default));
-  });
+  // baseview may hold first responder, in which case keys arrive from the
+  // plugin instead of the browser. Synthetic events don't type into inputs,
+  // so do the basic editing by hand.
+  function forwardKey(msg) {
+    const { event, type, ...init } = msg;
+    const target = document.activeElement ?? document.body;
+    const allowed = target.dispatchEvent(new KeyboardEvent(event, { ...init, bubbles: true, cancelable: true }));
+    if (!allowed || event !== "keydown" || !(target instanceof HTMLInputElement)) return;
+    editInput(target, init);
+  }
 
-  knob.addEventListener("keydown", (e) => {
-    const p = params.get(knobId);
-    const step = { ArrowUp: 0.01, ArrowRight: 0.01, ArrowDown: -0.01, ArrowLeft: -0.01 }[e.key];
-    if (!p || step === undefined) return;
-    e.preventDefault();
-    gesture(knobId, () => setParam(knobId, p.value + step * (e.shiftKey ? 10 : 1)));
-  });
+  function editInput(input, { key, metaKey, ctrlKey, shiftKey }) {
+    const { selectionStart: start, selectionEnd: end, value } = input;
+    const caret = (at) => input.setSelectionRange(at, at);
+    if (metaKey && key === "a") return input.select();
+    if (metaKey || ctrlKey) return;
+    if (key.length === 1) input.setRangeText(key, start, end, "end");
+    else if (key === "Backspace" && start !== end) input.setRangeText("", start, end, "end");
+    else if (key === "Backspace" && start > 0) input.setRangeText("", start - 1, start, "end");
+    else if (key === "Delete" && start !== end) input.setRangeText("", start, end, "end");
+    else if (key === "Delete") input.setRangeText("", start, start + 1, "end");
+    else if (key === "ArrowLeft") return caret(shiftKey ? start : Math.max(0, start - (start === end ? 1 : 0)));
+    else if (key === "ArrowRight") return caret(Math.min(value.length, end + (start === end ? 1 : 0)));
+    else if (key === "Home") return caret(0);
+    else if (key === "End") return caret(value.length);
+    else if (key === "Enter") return input.form?.requestSubmit();
+    else return;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
 
-  function buildChoices() {
-    const group = document.querySelector(".choices");
-    const id = group.dataset.param;
-    const p = params.get(id);
-    if (!p) return;
-    group.replaceChildren(...p.options.map((name, i) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = name;
-      button.addEventListener("click", () => gesture(id, () => setParam(id, i / p.steps)));
-      return button;
+  // ---------- pages and knobs ----------
+
+  function buildPageKeys() {
+    const nav = document.querySelector(".pages");
+    nav.replaceChildren(...pages.map((page, i) => {
+      const key = document.createElement("button");
+      key.type = "button";
+      key.className = "key";
+      key.role = "tab";
+      key.setAttribute("aria-controls", "knobs");
+      const number = document.createElement("small");
+      number.textContent = i + 1;
+      key.append(number, page.name.toLowerCase());
+      key.addEventListener("click", () => showPage(i));
+      return key;
     }));
-    views.set(id, (p) => {
-      const index = Math.round(p.value * p.steps);
-      [...group.children].forEach((b, i) => b.setAttribute("aria-pressed", String(i === index)));
-      showOnScreen(p);
+  }
+
+  function showPage(i) {
+    pageIndex = i;
+    const page = pages[i];
+    if (!page) return;
+    document.querySelectorAll(".pages .key").forEach((k, j) => k.setAttribute("aria-selected", String(j === i)));
+    $("screen-page").textContent = page.name;
+    views.clear();
+    $("knobs").replaceChildren(...page.rows.map((row) => {
+      const el = document.createElement("div");
+      el.className = "row";
+      let column = 0;
+      for (const section of row) {
+        const s = document.createElement("div");
+        s.className = "section";
+        s.style.gridColumn = `span ${section.knobs.length}`;
+        const title = document.createElement("h2");
+        title.textContent = section.title;
+        s.append(title);
+        for (const knob of section.knobs) s.append(buildKnob(knob, CAP_COLORS[column++ % CAP_COLORS.length]));
+        el.append(s);
+      }
+      return el;
+    }));
+    touched = null;
+    showReadout();
+    redraw();
+  }
+
+  function macroIndex(id) {
+    const m = /^macro(\d)$/.exec(id);
+    return m ? Number(m[1]) - 1 : -1;
+  }
+
+  function knobLabel(id, label) {
+    const i = macroIndex(id);
+    return i >= 0 ? session.macros[i] || `Macro ${label}` : label;
+  }
+
+  function buildKnob({ id, label }, color) {
+    const p = params.get(id);
+    const el = document.createElement("div");
+    el.className = "knob";
+    el.dataset.color = color;
+    el.dataset.param = id;
+    el.role = "slider";
+    el.tabIndex = 0;
+    el.setAttribute("aria-label", p.name);
+    const div = (className, ...children) => {
+      const d = document.createElement("div");
+      d.className = className;
+      d.append(...children);
+      return d;
+    };
+    const labelEl = div("label");
+    const textEl = div("text");
+    el.append(div("dial", div("arc"), div("cap")), labelEl, textEl);
+    const bipolar = p.kind !== "enum" && p.min < 0 && p.max > 0;
+
+    const update = (p) => {
+      const turn = p.value.toFixed(4);
+      const lo = bipolar ? Math.min(0.5, p.value) : 0;
+      const hi = bipolar ? Math.max(0.5, p.value) : p.value;
+      el.style.setProperty("--turn", turn);
+      el.style.setProperty("--lo", lo.toFixed(4));
+      el.style.setProperty("--hi", hi.toFixed(4));
+      el.setAttribute("aria-valuenow", turn);
+      el.setAttribute("aria-valuetext", p.text);
+      const name = knobLabel(id, label);
+      labelEl.textContent = name;
+      el.title = name === label ? p.name : `${name} (${p.name})`;
+      textEl.textContent = p.text;
+      el.classList.toggle("unused", macroIndex(id) >= 0 && !session.macros[macroIndex(id)]);
+    };
+    views.set(id, update);
+    update(p);
+
+    const stepped = p.steps > 0;
+    const snap = (v) => stepped ? Math.round(v * p.steps) / p.steps : v;
+    const stepSize = stepped ? 1 / p.steps : 0.01;
+
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      el.setPointerCapture(e.pointerId);
+      el.focus();
+      dragging.add(id);
+      bridge({ type: "begin", id });
+      touch(id);
+      let raw = p.value;
+      let lastY = e.clientY;
+      let moved = false;
+      const move = (ev) => {
+        const fine = ev.shiftKey ? 0.15 : 1;
+        raw = Math.min(1, Math.max(0, raw + ((lastY - ev.clientY) / 200) * fine));
+        lastY = ev.clientY;
+        moved = true;
+        const next = snap(raw);
+        if (next !== p.value) setParam(id, next);
+      };
+      const up = () => {
+        el.removeEventListener("pointermove", move);
+        el.removeEventListener("pointerup", up);
+        el.removeEventListener("pointercancel", up);
+        if (!moved && p.kind === "bool") setParam(id, p.value >= 0.5 ? 0 : 1);
+        dragging.delete(id);
+        bridge({ type: "end", id });
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+      el.addEventListener("pointercancel", up);
     });
+
+    el.addEventListener("dblclick", () => gesture(id, () => setParam(id, p.default)));
+
+    el.addEventListener("keydown", (e) => {
+      const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+      if (dir === undefined) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const amount = stepped ? stepSize : stepSize * (e.shiftKey ? 10 : 1);
+      gesture(id, () => setParam(id, snap(p.value + dir * amount)));
+    });
+
+    el.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const dir = Math.sign(-e.deltaY);
+      if (!dir) return;
+      gesture(id, () => setParam(id, snap(p.value + dir * (stepped ? stepSize : stepSize / 2))));
+    }, { passive: false });
+
+    el.addEventListener("focus", () => touch(id));
+    return el;
+  }
+
+  // ---------- session ----------
+
+  function renderSession() {
+    $("preset-name").textContent = session.name || "Untitled";
+    $("preset-category").textContent = session.category;
+    document.querySelector(".preset").classList.toggle("dirty", session.dirty);
+    const compare = $("compare");
+    compare.disabled = session.source === "new" || !session.dirty;
+    compare.setAttribute("aria-pressed", String(session.comparing));
+    for (const [id, update] of views) if (macroIndex(id) >= 0) update(params.get(id));
+    if (session.key) selectedKey = session.key;
+    renderBrowser();
+    redraw();
+  }
+
+  $("compare").addEventListener("click", () => bridge({ type: "compare", on: !session.comparing }));
+
+  // ---------- browser ----------
+
+  function sortPresets(list) {
+    const rank = (c) => {
+      const i = CATEGORY_ORDER.indexOf(c);
+      return i < 0 ? CATEGORY_ORDER.length : i;
+    };
+    return [...list].sort((a, b) =>
+      rank(a.category) - rank(b.category)
+      || a.category.localeCompare(b.category)
+      || a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }
+
+  function categories() {
+    const seen = new Set(presets.map((p) => p.category));
+    return [...CATEGORY_ORDER.filter((c) => seen.has(c)), ...[...seen].filter((c) => !CATEGORY_ORDER.includes(c)).sort()];
+  }
+
+  function visiblePresets() {
+    const words = filter.query.toLowerCase().split(/\s+/).filter(Boolean);
+    return presets.filter((p) => {
+      if (filter.category === "favorites" && !p.favorite) return false;
+      if (filter.category === "user" && !p.user) return false;
+      if (!["all", "favorites", "user"].includes(filter.category) && p.category !== filter.category) return false;
+      const haystack = `${p.name} ${p.category} ${p.tags.join(" ")}`.toLowerCase();
+      return words.every((w) => haystack.includes(w));
+    });
+  }
+
+  function renderBrowser() {
+    const nav = document.querySelector(".browser nav");
+    const counts = (pred) => presets.filter(pred).length;
+    const filters = [
+      ["all", "All", counts(() => true)],
+      ["favorites", "★ Favorites", counts((p) => p.favorite)],
+      ["user", "User", counts((p) => p.user)],
+      ...categories().map((c) => [c, c, counts((p) => p.category === c)]),
+    ];
+    nav.replaceChildren(...filters.map(([value, label, count]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "filter";
+      b.setAttribute("aria-pressed", String(filter.category === value));
+      const n = document.createElement("span");
+      n.textContent = count;
+      b.append(label, n);
+      b.addEventListener("click", () => {
+        filter.category = value;
+        renderBrowser();
+      });
+      return b;
+    }));
+
+    const list = visiblePresets();
+    $("count").textContent = list.length === 1 ? "1 preset" : `${list.length} presets`;
+    const ul = $("preset-list");
+    if (list.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = filter.category === "favorites" ? "No favorites yet. Star a preset to keep it here." : "No presets match.";
+      ul.replaceChildren(li);
+      return;
+    }
+    ul.replaceChildren(...list.map(presetRow));
+    ul.querySelector(".selected")?.scrollIntoView({ block: "nearest" });
+  }
+
+  function presetRow(p) {
+    const li = document.createElement("li");
+    li.classList.toggle("current", p.key === session.key);
+    li.classList.toggle("selected", p.key === selectedKey);
+
+    const star = document.createElement("button");
+    star.type = "button";
+    star.className = "star";
+    star.textContent = p.favorite ? "★" : "☆";
+    star.setAttribute("aria-label", `Favorite ${p.name}`);
+    star.setAttribute("aria-pressed", String(p.favorite));
+    star.addEventListener("click", () => bridge({ type: "favorite", key: p.key, on: !p.favorite }));
+
+    const load = document.createElement("button");
+    load.type = "button";
+    load.className = "load";
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = p.name;
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = p.user ? `${p.category} · user` : p.category;
+    load.append(title, meta);
+    load.addEventListener("click", () => loadPreset(p.key));
+    load.addEventListener("dblclick", () => closeBrowser());
+
+    li.append(star, load);
+    if (p.user) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "delete";
+      del.textContent = "delete";
+      del.setAttribute("aria-label", `Delete ${p.name}`);
+      del.addEventListener("click", () => {
+        if (!del.classList.contains("armed")) {
+          del.classList.add("armed");
+          del.textContent = "sure?";
+          return;
+        }
+        bridge({ type: "delete", key: p.key });
+      });
+      del.addEventListener("blur", () => {
+        del.classList.remove("armed");
+        del.textContent = "delete";
+      });
+      li.append(del);
+    }
+    return li;
+  }
+
+  function loadPreset(key) {
+    selectedKey = key;
+    bridge({ type: "load", key });
+    renderBrowser();
+  }
+
+  function stepPreset(delta) {
+    const list = visiblePresets();
+    if (list.length === 0) return;
+    const from = list.findIndex((p) => p.key === (session.key ?? selectedKey));
+    const next = from < 0 ? (delta > 0 ? 0 : list.length - 1) : (from + delta + list.length) % list.length;
+    loadPreset(list[next].key);
+  }
+
+  function openBrowser() {
+    $("browser").hidden = false;
+    $("browse").setAttribute("aria-expanded", "true");
+    $("search").focus();
+    renderBrowser();
+  }
+
+  function closeBrowser() {
+    $("browser").hidden = true;
+    $("browse").setAttribute("aria-expanded", "false");
+    $("browse").focus();
+  }
+
+  $("browse").addEventListener("click", () => ($("browser").hidden ? openBrowser() : closeBrowser()));
+  $("preset-button").addEventListener("click", openBrowser);
+  $("close-browser").addEventListener("click", closeBrowser);
+  $("prev").addEventListener("click", () => stepPreset(-1));
+  $("next").addEventListener("click", () => stepPreset(1));
+
+  $("search").addEventListener("input", (e) => {
+    filter.query = e.target.value;
+    renderBrowser();
+  });
+
+  $("search").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const list = visiblePresets();
+      if (list.length === 0) return;
+      const from = list.findIndex((p) => p.key === selectedKey);
+      const delta = e.key === "ArrowDown" ? 1 : -1;
+      const next = from < 0 ? 0 : Math.min(list.length - 1, Math.max(0, from + delta));
+      loadPreset(list[next].key);
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      closeBrowser();
+    }
+  });
+
+  // ---------- save ----------
+
+  function openSave() {
+    const dialog = $("save-dialog");
+    const select = $("save-category");
+    const options = categories();
+    if (session.category && !options.includes(session.category)) options.push(session.category);
+    select.replaceChildren(...options.map((c) => new Option(c, c, false, c === session.category)));
+    $("save-name").value = session.name;
+    updateSaveNote();
+    dialog.showModal();
+    $("save-name").select();
+  }
+
+  function updateSaveNote() {
+    const name = $("save-name").value.trim();
+    const replaces = presets.some((p) => p.user && p.name.toLowerCase() === name.toLowerCase());
+    $("save-note").textContent = replaces ? "Replaces your preset with this name." : session.source === "factory" ? "Saves a copy to your presets. Factory presets don’t change." : "";
+    $("save-confirm").textContent = replaces ? "replace" : "save";
+  }
+
+  $("save").addEventListener("click", openSave);
+  $("save-name").addEventListener("input", updateSaveNote);
+  $("save-cancel").addEventListener("click", () => $("save-dialog").close());
+  document.querySelector("#save-dialog form").addEventListener("submit", (e) => {
+    const name = $("save-name").value.trim();
+    if (!name) {
+      e.preventDefault();
+      return;
+    }
+    bridge({ type: "save", name, category: $("save-category").value });
+    showToast(`Saved “${name}”`);
+  });
+
+  let toastTimer;
+  function showToast(text) {
+    const toast = $("toast");
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 2000);
+  }
+
+  // ---------- shortcuts ----------
+
+  addEventListener("keydown", (e) => {
+    if (e.defaultPrevented) return;
+    const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+    if (e.key === "Escape") {
+      if ($("save-dialog").open) $("save-dialog").close();
+      else if (!$("browser").hidden) closeBrowser();
+      return;
+    }
+    if (typing || e.metaKey || e.ctrlKey) return;
+    if (/^[1-6]$/.test(e.key) && pages[Number(e.key) - 1]) showPage(Number(e.key) - 1);
+    else if (e.key === "[") stepPreset(-1);
+    else if (e.key === "]") stepPreset(1);
+  });
+
+  // ---------- screen graphics ----------
+
+  const canvas = $("graph");
+  const ctx = canvas.getContext("2d");
+  let frame = 0;
+
+  new ResizeObserver(() => {
+    const scale = devicePixelRatio || 1;
+    canvas.width = Math.round(canvas.clientWidth * scale);
+    canvas.height = Math.round(canvas.clientHeight * scale);
+    redraw();
+  }).observe(canvas);
+
+  function redraw() {
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0;
+      draw();
+    });
+  }
+
+  const GRAPH_FOR = [
+    [/^(flt_attack|flt_decay|flt_sustain|flt_release)$/, "filterEnv"],
+    [/^amp_/, "ampEnv"],
+    [/^mod_/, "modEnv"],
+    [/^pitch_env/, "pitchEnv"],
+    [/^lfo1_/, "lfo1"],
+    [/^lfo2_/, "lfo2"],
+    [/^lfo3_/, "lfo3"],
+    [/^(flt_|keytrack|vel_filter|at_filter)/, "filter"],
+    [/^delay_/, "delay"],
+    [/^reverb_/, "reverb"],
+    [/^eq_/, "eq"],
+    [/^macro/, "macros"],
+    [/^(osc|fm_|ring|unison|spread|sub_|noise|pink|wt_|pwm|supersaw)/, "wave"],
+  ];
+  const PAGE_GRAPH = { Osc: "wave", Shape: "pitchEnv", Filter: "filter", Mod: "lfo1", FX: "eq", Macro: "macros" };
+
+  function currentGraph() {
+    const match = touched && GRAPH_FOR.find(([re]) => re.test(touched));
+    return match ? match[1] : PAGE_GRAPH[pages[pageIndex]?.name] ?? "wave";
+  }
+
+  const GRAPHS = {
+    wave: ["Waveform", drawWave],
+    filter: ["Filter response", drawFilter],
+    filterEnv: ["Filter envelope", () => drawEnv("flt")],
+    ampEnv: ["Amp envelope", () => drawEnv("amp")],
+    modEnv: ["FM envelope", () => drawEnv("mod")],
+    pitchEnv: ["Pitch envelope", drawPitchEnv],
+    lfo1: ["LFO 1", () => drawLfo(1)],
+    lfo2: ["LFO 2", () => drawLfo(2)],
+    lfo3: ["LFO 3", () => drawLfo(3)],
+    delay: ["Delay echoes", drawDelay],
+    reverb: ["Reverb tail", drawReverb],
+    eq: ["EQ", drawEq],
+    macros: ["Macros", drawMacros],
+  };
+
+  function draw() {
+    if (params.size === 0) return;
+    const [title, fn] = GRAPHS[currentGraph()];
+    $("screen-graph").textContent = title;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(devicePixelRatio || 1, devicePixelRatio || 1);
+    fn();
+  }
+
+  const W = () => canvas.clientWidth;
+  const H = () => canvas.clientHeight;
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function stroke(points, color = css("--screen-ink"), width = 1.5) {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }
+
+  function baseline(y, color = css("--screen-dim")) {
+    ctx.setLineDash([2, 4]);
+    stroke([[0, y], [W(), y]], color, 1);
+    ctx.setLineDash([]);
+  }
+
+  function oscSample(type, phase, n) {
+    const t = phase - Math.floor(phase);
+    switch (type) {
+      case "Sine": return Math.sin(2 * Math.PI * t);
+      case "Saw": return 1 - 2 * t;
+      case "Square": return t < 0.5 ? 1 : -1;
+      case "Triangle": return 1 - 4 * Math.abs(t - 0.5);
+      case "Wavetable": {
+        const pos = get("wt_pos") / 100;
+        return (1 - pos) * Math.sin(2 * Math.PI * t) + pos * (1 - 2 * t);
+      }
+      case "PWM": return t < get("pwm_width") / 100 ? 1 : -1;
+      case "Supersaw": {
+        const spread = get("supersaw_detune") / 2000;
+        return [-1, 0, 1].reduce((s, k) => s + (1 - 2 * ((t * (1 + k * spread) + k * 0.31) % 1)), 0) / 3;
+      }
+      case "Noise": return Math.sin(n * 12.9898 + phase * 78.233) * 43758.5453 % 1;
+      default: return 0;
+    }
+  }
+
+  function drawWave() {
+    const w = W(), h = H(), mid = h / 2;
+    const level1 = get("osc1_level") / 100;
+    const level2 = get("osc2_level") / 100;
+    const ratio2 = Math.pow(2, (get("osc2_semi") - get("osc1_semi")) / 12);
+    const sub = get("sub_level") / 100;
+    const noise = (get("noise_level") + get("pink_level")) / 100;
+    const cycles = 2;
+    const n = Math.max(2, Math.round(w));
+    const samples = [];
+    for (let i = 0; i <= n; i++) {
+      const ph = (i / n) * cycles;
+      let v = level1 * oscSample(option("osc1_type"), ph, i) + level2 * oscSample(option("osc2_type"), ph * ratio2, i + 7);
+      v += sub * (ph / 2 % 1 < 0.5 ? 1 : -1);
+      v += noise * 0.5 * (Math.sin(i * 91.7) * 43758.5453 % 1);
+      samples.push(v);
+    }
+    const peak = Math.max(0.001, ...samples.map(Math.abs));
+    baseline(mid);
+    stroke(samples.map((v, i) => [(i / n) * w, mid - (v / peak) * mid * 0.85]));
+  }
+
+  const logX = (f, w) => (Math.log(f / 20) / Math.log(1000)) * w;
+
+  function drawFilter() {
+    const w = W(), h = H();
+    const type = option("flt_type");
+    const fc = get("flt_cutoff");
+    const res = get("flt_res") / 100;
+    const vowel = get("flt_vowel") / 100;
+    const db = (f) => {
+      const x = f / fc;
+      switch (type) {
+        case "Lowpass": {
+          const k = 2 - 1.96 * res;
+          return -10 * Math.log10((1 - x * x) ** 2 + (k * x) ** 2);
+        }
+        case "Ladder": {
+          const pole = 1 / Math.sqrt(1 + x ** 8);
+          const peak = 1 + res * 6 * Math.exp(-((Math.log2(x)) ** 2) * 12);
+          return 20 * Math.log10(pole * peak);
+        }
+        case "Comb": {
+          const g = 0.2 + res * 0.75;
+          const mag = 1 / Math.sqrt(1 + g * g - 2 * g * Math.cos(2 * Math.PI * x));
+          return 20 * Math.log10(mag * Math.sqrt(1 - g * g));
+        }
+        case "Formant": {
+          const table = [[800, 1150, 2900], [400, 1600, 2700], [350, 2300, 3000], [450, 800, 2830], [325, 700, 2530]];
+          const pos = vowel * (table.length - 1);
+          const a = table[Math.floor(pos)], b = table[Math.min(table.length - 1, Math.floor(pos) + 1)];
+          const t = pos - Math.floor(pos);
+          const bw = 0.12 - res * 0.08;
+          const sum = a.reduce((s, fa, i) => {
+            const ff = fa + (b[i] - fa) * t;
+            return s + Math.exp(-((Math.log2(f / ff)) ** 2) / bw) / (i + 1);
+          }, 0);
+          return 20 * Math.log10(sum + 0.02);
+        }
+        default: return 0;
+      }
+    };
+    const top = 18, bottom = -36;
+    const y = (d) => ((top - Math.min(top, Math.max(bottom, d))) / (top - bottom)) * h;
+    baseline(y(0));
+    const points = [];
+    for (let i = 0; i <= w; i += 2) points.push([i, y(db(20 * Math.pow(1000, i / w)))]);
+    stroke(points, css("--orange"));
+    if (type !== "Off") {
+      ctx.fillStyle = css("--screen-dim");
+      ctx.fillRect(logX(fc, w), 0, 1, h);
+    }
+  }
+
+  function envPoints(a, d, s, r, w, h) {
+    const scale = (ms) => Math.log10(1 + ms / 5);
+    const hold = 0.6;
+    const total = scale(a) + scale(d) + hold + scale(r);
+    const unit = w / total;
+    const xa = scale(a) * unit, xd = xa + scale(d) * unit, xs = xd + hold * unit, xr = xs + scale(r) * unit;
+    const y = (v) => h - 4 - v * (h - 8);
+    return [[0, y(0)], [xa, y(1)], [xd, y(s)], [xs, y(s)], [xr, y(0)]];
+  }
+
+  function drawEnv(prefix) {
+    const w = W(), h = H();
+    const ids = prefix === "flt" ? ["flt_attack", "flt_decay", "flt_sustain", "flt_release"] : ["attack", "decay", "sustain", "release"].map((s) => `${prefix}_${s}`);
+    const [a, d, s, r] = ids.map(get);
+    baseline(h - 4);
+    stroke(envPoints(a, d, s / 100, r, w, h), prefix === "amp" ? css("--screen-ink") : css("--orange"));
+  }
+
+  function drawPitchEnv() {
+    const w = W(), h = H(), mid = h / 2;
+    const on = get("pitch_env") >= 0.5;
+    const amount = get("pitch_env_amt") / 24;
+    const a = get("pitch_env_attack"), d = get("pitch_env_decay");
+    const total = Math.max(50, (a + d) * 1.6);
+    const points = [];
+    for (let i = 0; i <= w; i += 2) {
+      const t = (i / w) * total;
+      const env = t < a ? t / Math.max(1, a) : Math.exp(-(t - a) / Math.max(1, d / 3));
+      points.push([i, mid - env * amount * mid * 0.9]);
+    }
+    baseline(mid);
+    stroke(points, on ? css("--orange") : css("--screen-dim"));
+  }
+
+  function lfoShape(shape, t, seed) {
+    const p = t - Math.floor(t);
+    switch (shape) {
+      case "Sine": return Math.sin(2 * Math.PI * p);
+      case "Square": return p < 0.5 ? 1 : -1;
+      case "Triangle": return 1 - 4 * Math.abs(p - 0.5);
+      default: return Math.sin((Math.floor(t * 2) + seed) * 12.9898) * 43758.5453 % 1;
+    }
+  }
+
+  function drawLfo(n) {
+    const w = W(), h = H(), mid = h / 2;
+    const shape = option(`lfo${n}_shape`);
+    const synced = get(`lfo${n}_sync`) >= 0.5;
+    const rate = get(`lfo${n}_rate`);
+    const cycles = synced ? 2 : Math.min(8, Math.max(1, rate));
+    const depthIds = { 1: ["lfo1_pitch", "lfo1_filter", "lfo1_amp"], 2: ["lfo2_pitch", "lfo2_filter"], 3: ["lfo3_pan", "lfo3_amp"] }[n];
+    const depth = Math.max(...depthIds.map(get)) / 100;
+    const points = [];
+    for (let i = 0; i <= w; i += 1) points.push([i, mid - lfoShape(shape, (i / w) * cycles, n) * mid * 0.85]);
+    baseline(mid);
+    stroke(points, depth > 0 ? css("--orange") : css("--screen-dim"));
+    $("screen-graph").textContent = synced ? `LFO ${n} · ${option(`lfo${n}_division`)}` : `LFO ${n} · ${params.get(`lfo${n}_rate`).text}`;
+  }
+
+  function drawDelay() {
+    const w = W(), h = H();
+    const fb = get("delay_feedback") / 100;
+    const mix = get("delay_mix") / 100;
+    const synced = get("delay_sync") >= 0.5;
+    const gap = w / 9;
+    baseline(h - 2);
+    ctx.fillStyle = css("--screen-ink");
+    ctx.fillRect(4, 4, 3, h - 6);
+    let level = mix;
+    for (let x = 4 + gap; x < w && level > 0.01; x += gap, level *= fb) {
+      ctx.fillStyle = css("--orange");
+      ctx.fillRect(x, h - 2 - level * (h - 6), 3, level * (h - 6));
+    }
+    $("screen-graph").textContent = synced ? `Delay · ${option("delay_division")}` : `Delay · ${params.get("delay_time").text}`;
+  }
+
+  function drawReverb() {
+    const w = W(), h = H();
+    const size = get("reverb_size") / 100;
+    const mix = get("reverb_mix") / 100;
+    const decay = 0.08 + size * 0.9;
+    baseline(h - 2);
+    ctx.fillStyle = css("--orange");
+    for (let i = 0; i < w; i += 3) {
+      const env = Math.exp(-(i / w) / decay * 3) * mix;
+      const jitter = 0.6 + 0.4 * Math.abs(Math.sin(i * 7.31));
+      const bar = env * jitter * (h - 6);
+      ctx.fillRect(i, h - 2 - bar, 2, bar);
+    }
+  }
+
+  function drawEq() {
+    const w = W(), h = H(), mid = h / 2;
+    const low = get("eq_low"), midGain = get("eq_mid"), high = get("eq_high");
+    const shelf = (f, fc, g, up) => g / (1 + Math.pow(up ? fc / f : f / fc, 2));
+    const bell = (f, fc, g) => g * Math.exp(-((Math.log2(f / fc)) ** 2) * 1.4);
+    const points = [];
+    for (let i = 0; i <= w; i += 2) {
+      const f = 20 * Math.pow(1000, i / w);
+      const d = shelf(f, 250, low, false) + bell(f, 1000, midGain) + shelf(f, 4000, high, true);
+      points.push([i, mid - (d / 15) * mid]);
+    }
+    baseline(mid);
+    stroke(points, css("--orange"));
+  }
+
+  function drawMacros() {
+    const w = W(), h = H();
+    const slot = w / 8;
+    ctx.font = "10px ui-monospace, Menlo, monospace";
+    ctx.textAlign = "center";
+    for (let i = 0; i < 8; i++) {
+      const v = get(`macro${i + 1}`) / 100;
+      const named = Boolean(session.macros[i]);
+      const x = i * slot + slot * 0.3;
+      const barH = h - 16;
+      ctx.fillStyle = css("--screen-dim");
+      ctx.fillRect(x, 0, slot * 0.4, barH);
+      ctx.fillStyle = named ? css(i % 2 ? "--screen-ink" : "--orange") : css("--screen-dim");
+      ctx.fillRect(x, barH * (1 - v), slot * 0.4, barH * v);
+      ctx.fillStyle = named ? css("--screen-ink") : css("--screen-dim");
+      ctx.fillText((session.macros[i] || `${i + 1}`).slice(0, 9), i * slot + slot / 2, h - 2);
+    }
+  }
+
+  // ---------- browser mock ----------
+
+  function mockBridge() {
+    const state = { values: {}, presets: [], session: null, saved: null, stashed: null };
+    let ready = null;
+    const send = (msg) => setTimeout(() => window.onPluginMessage(msg));
+    const text = (p, n) => {
+      const v = plain(p, n);
+      if (p.kind === "enum") return p.options[v];
+      if (p.kind === "bool") return v ? "On" : "Off";
+      if (p.kind === "int") return `${v}${p.unit ? ` ${p.unit}` : ""}`;
+      if (p.unit === "Hz") return v < 1000 ? `${v.toFixed(2)} Hz` : `${(v / 1000).toFixed(2)} kHz`;
+      if (p.unit === "ms") return `${Math.round(v)} ms`;
+      return `${v.toFixed(1)} ${p.unit}`.trim();
+    };
+    const listing = () => state.presets.map(({ values, macros, ...rest }) => rest);
+    const dirty = () => !state.saved || state.stashed !== null
+      || state.order.some((id, i) => Math.abs(state.values[id] - state.saved.values[i]) > 1e-4);
+    const sendSession = () => {
+      const s = state.session;
+      send({ type: "session", ...s, dirty: dirty(), comparing: state.stashed !== null });
+    };
+    const sendValues = (ids) => send({ type: "values", values: ids.map((id) => ({ id, value: state.values[id], text: text(state.params[id], state.values[id]) })) });
+    const applyValues = (arr) => {
+      state.order.forEach((id, i) => (state.values[id] = arr[i]));
+      sendValues(state.order);
+    };
+
+    fetch("dev/mock.json").then((r) => r.json()).then((data) => {
+      state.params = Object.fromEntries(data.params.map((p) => [p.id, p]));
+      state.order = data.params.map((p) => p.id);
+      data.params.forEach((p) => (state.values[p.id] = p.default));
+      state.presets = data.presets;
+      state.session = { name: "", category: "", source: "new", key: null, macros: Array(8).fill("") };
+      state.data = data;
+      ready?.();
+    });
+
+    return (msg) => {
+      const handle = () => {
+        const find = (key) => state.presets.find((p) => p.key === key);
+        switch (msg.type) {
+          case "ready":
+            send({ type: "init", params: state.data.params, pages: state.data.pages });
+            send({ type: "presets", presets: listing() });
+            sendValues(state.order);
+            sendSession();
+            return;
+          case "set":
+            state.values[msg.id] = msg.value;
+            state.stashed = null;
+            sendValues([msg.id]);
+            sendSession();
+            return;
+          case "load": {
+            const p = find(msg.key);
+            if (!p) return;
+            applyValues(p.values);
+            state.saved = p;
+            state.stashed = null;
+            state.session = { name: p.name, category: p.category, source: p.user ? "user" : "factory", key: p.key, macros: [...p.macros, ...Array(8).fill("")].slice(0, 8) };
+            sendSession();
+            return;
+          }
+          case "favorite":
+            find(msg.key).favorite = msg.on;
+            send({ type: "presets", presets: listing() });
+            return;
+          case "save": {
+            const edit = state.stashed ?? state.order.map((id) => state.values[id]);
+            if (state.stashed) applyValues(state.stashed);
+            state.stashed = null;
+            const key = `user/${msg.name}`;
+            const preset = { key, name: msg.name, category: msg.category, tags: [], user: true, favorite: false, values: edit, macros: state.session.macros.filter(Boolean) };
+            state.presets = state.presets.filter((p) => p.key !== key).concat(preset);
+            state.saved = preset;
+            state.session = { ...state.session, name: msg.name, category: msg.category, source: "user", key };
+            send({ type: "presets", presets: listing() });
+            sendSession();
+            return;
+          }
+          case "delete":
+            state.presets = state.presets.filter((p) => p.key !== msg.key);
+            if (state.session.key === msg.key) {
+              state.session = { ...state.session, source: "new", key: null };
+              state.saved = null;
+            }
+            send({ type: "presets", presets: listing() });
+            sendSession();
+            return;
+          case "compare":
+            if (msg.on && !state.stashed && state.saved && dirty()) {
+              state.stashed = state.order.map((id) => state.values[id]);
+              applyValues(state.saved.values);
+            } else if (!msg.on && state.stashed) {
+              const edit = state.stashed;
+              state.stashed = null;
+              applyValues(edit);
+            }
+            sendSession();
+            return;
+        }
+      };
+      if (state.data) handle();
+      else if (msg.type === "ready") ready = handle;
+    };
   }
 
   bridge({ type: "ready" });
