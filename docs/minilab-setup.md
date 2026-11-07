@@ -55,9 +55,7 @@ MiniLab. The setup survives power cycles.
 ## In REAPER
 
 - Give the track the MiniLab as MIDI input, and arm it with monitoring on.
-- Open the plugin window once after loading a project. Knob turns and
-  preset pads need it once per session; after that they keep working with the
-  window closed. Page pads always work. Fixing this needs a patch to
-  nih-plug, the plugin framework (see `SPEC.md`, risk 4).
+- Knobs and pads work with the plugin window closed. The screen follows the
+  page next time it opens.
 - Knob turns are real parameter changes, so REAPER records them as automation
   when the track is in a write mode.

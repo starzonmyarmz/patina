@@ -19,8 +19,8 @@ pub struct Controls {
     step: AtomicI32,
     pending: AtomicBool,
     knob_mode: AtomicU8,
-    /// Kept from the editor so knobs keep working after it closes. Cleared on
-    /// deactivate: the context holds the plugin wrapper, which owns us.
+    /// Taken on initialize. Cleared on deactivate: the context holds the
+    /// plugin wrapper, which owns us.
     context: Mutex<Option<Arc<dyn GuiContext>>>,
     library: Mutex<Library>,
     /// The browser's filtered order, which preset pads step through.
@@ -72,10 +72,10 @@ impl Controls {
         *self.order.lock().unwrap_or_else(|e| e.into_inner()) = keys;
     }
 
-    pub fn keep_context(&self, context: &Arc<dyn GuiContext>) {
+    pub fn keep_context(&self, context: impl FnOnce() -> Arc<dyn GuiContext>) {
         let mut slot = self.context.lock().unwrap_or_else(|e| e.into_inner());
         if slot.is_none() {
-            *slot = Some(context.clone());
+            *slot = Some(context());
         }
     }
 
@@ -109,8 +109,8 @@ impl Controls {
         self.pending.swap(false, Ordering::AcqRel)
     }
 
-    /// GUI thread. Without a context (the editor hasn't opened yet) the
-    /// pending moves are dropped rather than saved up.
+    /// GUI thread. Without a context (the plugin isn't active) the pending
+    /// moves are dropped rather than saved up.
     pub fn run(&self, params: &ThousandParams) {
         let context = self.context.lock().ok().and_then(|c| c.clone());
         match context {

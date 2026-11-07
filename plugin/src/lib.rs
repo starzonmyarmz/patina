@@ -103,8 +103,9 @@ impl Plugin for ThousandSynths {
         &mut self,
         _layout: &AudioIOLayout,
         buffer_config: &BufferConfig,
-        _context: &mut impl InitContext<Self>,
+        context: &mut impl InitContext<Self>,
     ) -> bool {
+        self.controls.keep_context(|| context.gui_context());
         if self.engine.sample_rate() != buffer_config.sample_rate {
             self.engine = Engine::new(buffer_config.sample_rate);
         }

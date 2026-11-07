@@ -1,8 +1,9 @@
 # 1000 Synths
 
 A polysynth plugin (VST3 + CLAP) in Rust, built with
-[nih-plug](https://github.com/robbert-vdh/nih-plug). See [SPEC.md](SPEC.md) for
-the design and build order.
+[nih-plug](https://github.com/robbert-vdh/nih-plug), patched in `vendor/` (see
+[vendor/README.md](vendor/README.md)). See [SPEC.md](SPEC.md) for the design
+and build order.
 
 ## Install
 
@@ -83,3 +84,4 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |
 | `presetgen/` | Factory bank generator and quality gate. |
+| `vendor/nih_plug/` | nih-plug with fixes for state loading and setting parameters without an editor. |

@@ -64,7 +64,6 @@ impl Editor for WebEditor {
         };
         let params = self.params.clone();
         let controls = self.controls.clone();
-        controls.keep_context(&context);
         let changed = self.changed.clone();
         changed.store(true, Ordering::Release);
         let handle = Window::open_parented(&Parent(parent), options, move |window| {
@@ -82,8 +81,8 @@ impl Editor for WebEditor {
                 Err(_) => builder.with_html(UI_HTML),
             };
             let webview = builder.and_then(|b| b.build()).ok();
-            let bridge = Bridge::new(params.clone(), controls.clone());
-            Handler { context, params, controls, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
+            let bridge = Bridge::new(params.clone(), controls);
+            Handler { context, params, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
         });
         Box::new(Open(handle))
     }
@@ -112,7 +111,6 @@ impl Editor for WebEditor {
 struct Handler {
     context: Arc<dyn GuiContext>,
     params: Arc<ThousandParams>,
-    controls: Arc<Controls>,
     changed: Arc<AtomicBool>,
     webview: Option<WebView>,
     inbox: Receiver<String>,
@@ -157,8 +155,6 @@ impl Handler {
 
 impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, _window: &mut Window) {
-        // Reactivating the plugin drops the context; take it back.
-        self.controls.keep_context(&self.context);
         while let Ok(msg) = self.inbox.try_recv() {
             self.handle(&msg);
         }
