@@ -201,7 +201,7 @@ pub fn save_to(dir: &Path, preset: &Preset) -> std::io::Result<PathBuf> {
     Ok(path)
 }
 
-fn file_stem(name: &str) -> String {
+pub(crate) fn file_stem(name: &str) -> String {
     let cleaned: String = name
         .chars()
         .map(|c| if c.is_alphanumeric() || " -_()'".contains(c) { c } else { '_' })

@@ -1,6 +1,7 @@
 mod editor;
 pub mod engine;
 pub mod layout;
+pub mod library;
 pub mod macros;
 pub mod params;
 pub mod presets;
