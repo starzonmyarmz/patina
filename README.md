@@ -31,6 +31,31 @@ add **Patina** to a track. Prefer the CLAP version.
   changed. The orange dot means unsaved changes; **compare** flips between
   your edit and the saved preset.
 
+## Curating the factory bank
+
+Shift A in the editor turns on audition mode. The plugin loops a short
+phrase that suits the preset's category (it follows the host tempo, and
+plays with the transport stopped), and the page keys become **keep**,
+**tweak**, **cut**, **replay**, **skip** and **exit** (k, t, c, r, n).
+Rating moves on to the next preset; **skip** jumps to the next unrated one,
+and the browser gets an Unrated filter. On the MiniLab, pad bank 2 does the
+same.
+
+Rate a **tweak** after turning knobs and the edited sound is kept with the
+verdict. Verdicts go to `~/Library/Application Support/Patina/ratings.json`.
+The generator merges them into `presets/ratings.json` (commit that file),
+drops every cut preset, applies tweaks that carry an edit, and lists the
+tweaks still waiting for one:
+
+```sh
+cargo run --release -p presetgen
+```
+
+Verdicts are keyed by preset name, so changing the generator can orphan
+them; it warns about any that no longer match. Clearing a verdict in the
+plugin doesn't clear one already merged into the repo: edit
+`presets/ratings.json` for that.
+
 ## MiniLab MK2
 
 See [docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on

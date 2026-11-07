@@ -28,14 +28,23 @@ struct State {
 /// Browser order for the factory categories; others follow alphabetically.
 pub const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
 
+fn support_dir() -> PathBuf {
+    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    home.join("Library/Application Support/Patina")
+}
+
+/// Where the plugin saves audition verdicts.
+pub fn ratings_path() -> PathBuf {
+    support_dir().join("ratings.json")
+}
+
 fn category_rank(category: &str) -> usize {
     CATEGORY_ORDER.iter().position(|c| *c == category).unwrap_or(CATEGORY_ORDER.len())
 }
 
 impl Library {
     pub fn open() -> Self {
-        let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
-        Self::at(presets::user_dir(), home.join("Library/Application Support/Patina/state.json"))
+        Self::at(presets::user_dir(), support_dir().join("state.json"))
     }
 
     pub fn at(user_dir: PathBuf, state_path: PathBuf) -> Self {

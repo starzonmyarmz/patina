@@ -47,7 +47,8 @@ Each step ends with something that loads and plays in REAPER.
    open/close in REAPER). Then the paged UI and the preset browser.
 5. **MiniLab.** Relative encoders, pad mapping, a MIDI Control Center setup
    guide.
-6. **Audition mode** and curation sessions.
+6. **Audition mode** and curation sessions. Done: see the README's "Curating the
+   factory bank".
 7. **Pad lights**, after testing the SysEx on the device.
 
 ## Parameters

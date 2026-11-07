@@ -40,7 +40,24 @@ to step through just those.
 
 ## Pads, bank 2
 
-Leave them sending notes, as they do out of the box.
+Leave them sending notes, as they do out of the box (notes 44–51). They play
+notes normally. In audition mode (Shift A in the plugin window) they rate
+presets instead:
+
+| Pad | Note | Does |
+|---|---|---|
+| 9 | 44 | Keep |
+| 10 | 45 | Tweak |
+| 11 | 46 | Cut |
+| 12 | 47 | Clear the verdict |
+| 13 | 48 | Replay the phrase |
+| 14 | 49 | Next unrated preset |
+| 15 | 50 | Previous preset |
+| 16 | 51 | Next preset |
+
+If your pads send other notes, set bank 2 back to notes 44–51 in MCC. In
+audition mode the keyboard's G♯2–B2 are taken by the pads, whichever
+sends them.
 
 ## Touch strips
 

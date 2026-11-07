@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use patina::params::{PlainValues, Values};
 use patina::presets::{matrix_from, Bank, MacroDef, MacroTarget, Preset, FORMAT};
+use patina::ratings::{Ratings, Verdict};
 
 const SEED: u64 = 0x1000_5EED;
 const VARIATIONS: usize = 6;
@@ -125,8 +126,53 @@ fn candidates() -> Vec<Candidate> {
     out
 }
 
+/// The repo's verdicts, with any newer ones from the plugin merged in and
+/// written back.
+fn load_ratings() -> Ratings {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../presets/ratings.json");
+    let mut ratings = Ratings::load(&path);
+    let newer = Ratings::load(&patina::library::ratings_path());
+    let before = ratings.ratings.clone();
+    ratings.merge(newer);
+    if ratings.ratings != before {
+        ratings.save(&path).unwrap();
+        println!("merged plugin ratings into {}", path.display());
+    }
+    ratings
+}
+
+/// Drops cut candidates and applies tweaks that carry an edit. Returns
+/// the names still waiting for a hand tweak and the ratings that matched
+/// no candidate.
+fn apply_ratings(all: &mut Vec<Candidate>, ratings: &Ratings) -> (Vec<String>, Vec<String>) {
+    let names: HashSet<&str> = all.iter().map(|c| c.preset.name.as_str()).collect();
+    let stale = ratings.ratings.keys().filter(|n| !names.contains(n.as_str())).cloned().collect();
+    let mut to_tweak = Vec::new();
+    all.retain_mut(|c| {
+        let Some(rating) = ratings.get(&c.preset.name) else { return true };
+        match (rating.verdict, &rating.edit) {
+            (Verdict::Cut, _) => return false,
+            (Verdict::Tweak, Some(edit)) => c.values = edit.values(),
+            (Verdict::Tweak, None) => to_tweak.push(c.preset.name.clone()),
+            (Verdict::Keep, _) => {}
+        }
+        true
+    });
+    (to_tweak, stale)
+}
+
 fn main() {
     let mut all = candidates();
+    let ratings = load_ratings();
+    let before = all.len();
+    let (to_tweak, stale) = apply_ratings(&mut all, &ratings);
+    println!("ratings: {} rated, {} cut", ratings.ratings.len(), before - all.len());
+    for name in &stale {
+        eprintln!("rating for {name} matches no preset; the generator may have renamed it");
+    }
+    for name in &to_tweak {
+        println!("to tweak: {name}");
+    }
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let per = all.len().div_ceil(threads);
     let results: Vec<Result<f32, String>> = std::thread::scope(|scope| {
@@ -177,4 +223,32 @@ fn main() {
     let json = serde_json::to_string_pretty(&Bank { format: FORMAT, presets: kept }).unwrap();
     std::fs::write(&path, json + "\n").unwrap();
     println!("wrote {}", path.display());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use patina::params::Pid;
+    use patina::ratings::Rating;
+
+    #[test]
+    fn ratings_cut_and_tweak_candidates() {
+        let mut all = candidates();
+        let (a, b, c) = (all[0].preset.name.clone(), all[1].preset.name.clone(), all[2].preset.name.clone());
+        let mut edited = all[1].values.clone();
+        edited.set(Pid::Cutoff, Pid::Cutoff.spec().denormalize(0.0));
+        let mut ratings = Ratings::default();
+        ratings.set(&a, Some(Rating { verdict: Verdict::Cut, edit: None }));
+        let edit = Preset::capture(&b, "Bass", &edited, &[]);
+        ratings.set(&b, Some(Rating { verdict: Verdict::Tweak, edit: Some(edit) }));
+        ratings.set(&c, Some(Rating { verdict: Verdict::Tweak, edit: None }));
+        ratings.set("Gone", Some(Rating { verdict: Verdict::Keep, edit: None }));
+        let before = all.len();
+        let (to_tweak, stale) = apply_ratings(&mut all, &ratings);
+        assert_eq!(all.len(), before - 1);
+        assert!(all.iter().all(|x| x.preset.name != a));
+        assert_eq!(all[0].values.get(Pid::Cutoff), edited.get(Pid::Cutoff));
+        assert_eq!(to_tweak, vec![c]);
+        assert_eq!(stale, vec!["Gone".to_string()]);
+    }
 }
