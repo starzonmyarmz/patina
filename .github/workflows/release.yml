@@ -16,7 +16,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask bundle-universal patina --release
@@ -26,7 +26,7 @@ jobs:
           cd target/bundled
           ditto -c -k --keepParent Patina.vst3 ../../dist/Patina-macOS-VST3.zip
           ditto -c -k --keepParent Patina.clap ../../dist/Patina-macOS-CLAP.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*
@@ -34,7 +34,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
       - run: cargo xtask bundle patina --release
       - name: Zip
@@ -43,7 +43,7 @@ jobs:
           New-Item -ItemType Directory dist
           Compress-Archive -Path target/bundled/Patina.vst3 -DestinationPath dist/Patina-Windows-VST3.zip
           Compress-Archive -Path target/bundled/Patina.clap -DestinationPath dist/Patina-Windows-CLAP.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*
@@ -52,7 +52,7 @@ jobs:
     needs: [macos, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
