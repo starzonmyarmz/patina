@@ -8,6 +8,7 @@ pub mod macros;
 pub mod minilab;
 pub mod params;
 pub mod presets;
+pub mod ratings;
 
 use engine::{Engine, Transport, CHUNK};
 use nih_plug::prelude::*;

@@ -1,4 +1,5 @@
 use crate::presets::{self, Preset, Session, Source};
+use crate::ratings::{Rating, Ratings};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
@@ -13,6 +14,7 @@ pub struct Library {
     user_dir: PathBuf,
     state_path: PathBuf,
     state: State,
+    ratings: Ratings,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -42,7 +44,8 @@ impl Library {
             .and_then(|json| serde_json::from_str(&json).ok())
             .unwrap_or_default();
         let user = presets::load_dir(&user_dir);
-        Self { factory: presets::factory(), user, user_dir, state_path, state }
+        let ratings = Ratings::load(&state_path.with_file_name("ratings.json"));
+        Self { factory: presets::factory(), user, user_dir, state_path, state, ratings }
     }
 
     pub fn reload(&mut self) {
@@ -107,6 +110,7 @@ impl Library {
                     "category": p.category,
                     "tags": p.tags,
                     "user": source == Source::User,
+                    "rating": self.rating(&key).map(|r| r.verdict.name()),
                 })
             })
             .collect()
@@ -139,6 +143,23 @@ impl Library {
             self.write_state()?;
         }
         Ok(())
+    }
+
+    pub fn ratings_path(&self) -> PathBuf {
+        self.state_path.with_file_name("ratings.json")
+    }
+
+    /// Only factory presets are rated.
+    pub fn rating(&self, key: &str) -> Option<&Rating> {
+        self.ratings.get(key.strip_prefix("factory/")?)
+    }
+
+    pub fn rate(&mut self, key: &str, rating: Option<Rating>) -> io::Result<()> {
+        let Some(name) = key.strip_prefix("factory/").filter(|_| self.get(key).is_some()) else {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "only factory presets are rated"));
+        };
+        self.ratings.set(name, rating);
+        self.ratings.save(&self.ratings_path())
     }
 
     fn write_state(&self) -> io::Result<()> {
@@ -200,6 +221,21 @@ mod tests {
         let ranks: Vec<_> = categories.iter().map(|c| category_rank(c)).collect();
         assert!(ranks.windows(2).all(|w| w[0] <= w[1]));
         assert_eq!(lib.keys().len(), categories.len());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rates_factory_presets_only() {
+        use crate::ratings::Verdict;
+        let (root, mut lib) = temp_library("rate");
+        let key = lib.keys()[0].clone();
+        lib.rate(&key, Some(Rating { verdict: Verdict::Cut, edit: None })).unwrap();
+        let again = Library::at(root.join("User"), root.join("state.json"));
+        assert_eq!(again.rating(&key).map(|r| r.verdict), Some(Verdict::Cut));
+        let listed = again.listing().into_iter().find(|e| e["key"] == key.as_str()).unwrap();
+        assert_eq!(listed["rating"], "cut");
+        assert!(lib.rate("user/Mine", None).is_err());
+        assert!(lib.rate("factory/No such preset", None).is_err());
         let _ = std::fs::remove_dir_all(root);
     }
 
