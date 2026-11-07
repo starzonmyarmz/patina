@@ -2370,6 +2370,7 @@ name = "thousand_synths"
 version = "0.1.0"
 dependencies = [
  "baseview",
+ "keyboard-types",
  "nih_plug",
  "raw-window-handle",
  "serde",

@@ -1,5 +1,6 @@
 use crate::params::{Kind, Pid, ThousandParams, COUNT};
 use baseview::{Event, EventStatus, Size, Window, WindowHandle, WindowOpenOptions, WindowScalePolicy};
+use keyboard_types::{KeyState, Modifiers};
 use nih_plug::prelude::{Editor, GuiContext, ParentWindowHandle};
 use raw_window_handle::{AppKitWindowHandle, HasRawWindowHandle, RawWindowHandle};
 use serde_json::{json, Value};
@@ -76,7 +77,7 @@ impl Editor for WebEditor {
                 Err(_) => builder.with_html(UI_HTML),
             };
             let webview = builder.and_then(|b| b.build()).ok();
-            Handler { context, params, changed, webview, inbox, sent: [f32::NAN; COUNT], ready: false }
+            Handler { context, params, changed, webview, inbox, sent: [f32::NAN; COUNT], ready: false, page_has_focus: false }
         });
         Box::new(Open(handle))
     }
@@ -110,6 +111,8 @@ struct Handler {
     inbox: Receiver<String>,
     sent: [f32; COUNT],
     ready: bool,
+    /// Something on the page (a knob, the search box) has keyboard focus.
+    page_has_focus: bool,
 }
 
 impl Handler {
@@ -131,6 +134,12 @@ impl Handler {
                 self.send(json!({ "type": "init", "params": self.describe() }));
                 self.changed.store(true, Ordering::Release);
             }
+            (Some("focus"), _) => {
+                if let Some(webview) = &self.webview {
+                    webview.focus();
+                }
+            }
+            (Some("keys"), _) => self.page_has_focus = msg["active"].as_bool().unwrap_or(false),
             (Some("begin"), Some(pid)) => unsafe { self.context.raw_begin_set_parameter(self.params.ptr(pid)) },
             (Some("set"), Some(pid)) => {
                 if let Some(v) = msg["value"].as_f64() {
@@ -188,7 +197,27 @@ impl baseview::WindowHandler for Handler {
         }
     }
 
-    fn on_event(&mut self, _window: &mut Window, _event: Event) -> EventStatus {
-        EventStatus::Ignored
+    /// baseview's view grabs first-responder status, so keys can land here
+    /// instead of in the webview. Forward them while the page has focus;
+    /// otherwise let them through so host shortcuts like play keep working.
+    fn on_event(&mut self, _window: &mut Window, event: Event) -> EventStatus {
+        let Event::Keyboard(e) = event else {
+            return EventStatus::Ignored;
+        };
+        if !self.page_has_focus {
+            return EventStatus::Ignored;
+        }
+        self.send(json!({
+            "type": "key",
+            "event": if e.state == KeyState::Down { "keydown" } else { "keyup" },
+            "key": e.key.to_string(),
+            "code": e.code.to_string(),
+            "repeat": e.repeat,
+            "shiftKey": e.modifiers.contains(Modifiers::SHIFT),
+            "altKey": e.modifiers.contains(Modifiers::ALT),
+            "ctrlKey": e.modifiers.contains(Modifiers::CONTROL),
+            "metaKey": e.modifiers.contains(Modifiers::META),
+        }));
+        EventStatus::Captured
     }
 }

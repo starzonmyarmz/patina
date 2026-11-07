@@ -154,7 +154,21 @@
     };
   }
 
+  addEventListener("pointerdown", () => bridge({ type: "focus" }), true);
+  addEventListener("focusin", () => bridge({ type: "keys", active: true }));
+  addEventListener("focusout", (e) => {
+    if (!e.relatedTarget) bridge({ type: "keys", active: false });
+  });
+
   window.onPluginMessage = (msg) => {
+    if (msg.type === "key") {
+      const { event, ...init } = msg;
+      delete init.type;
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent(event, { ...init, bubbles: true, cancelable: true }),
+      );
+      return;
+    }
     if (msg.type === "init") {
       msg.params.forEach((p) => params.set(p.id, { ...p, value: p.default, text: "" }));
       buildChoices();
