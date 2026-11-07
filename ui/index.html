@@ -16,8 +16,6 @@
     --screen-ink: #f2f2f2;
     --screen-dim: #5a5955;
     --orange: #ff5a1f;
-    --blue: #2f6cf6;
-    --green: #22a861;
     --white: #f7f6f2;
     --track: #cfccc4;
     --gutter: 24px;
@@ -274,7 +272,7 @@
       width: var(--cap);
       aspect-ratio: 1;
       border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, var(--hl), var(--base) 55%, var(--low));
+      background: radial-gradient(circle at 35% 30%, #4a4945, #2b2a28 55%, #161615);
       box-shadow:
         0 5px 8px rgb(0 0 0 / 0.25),
         0 1px 0 rgb(255 255 255 / 0.6) inset,
@@ -286,14 +284,9 @@
         inset: 0;
         border-radius: 50%;
         rotate: calc(-135deg + var(--turn, 0) * 270deg);
-        background: linear-gradient(var(--pointer), var(--pointer)) center 6px / 4px 24% no-repeat;
+        background: linear-gradient(#fff, #fff) center 6px / 4px 24% no-repeat;
       }
     }
-
-    &[data-color="blue"] .cap { --hl: #5b8cff; --base: var(--blue); --low: #1f4fc0; --pointer: #fff; }
-    &[data-color="green"] .cap { --hl: #4fd08a; --base: var(--green); --low: #157a45; --pointer: #fff; }
-    &[data-color="white"] .cap { --hl: #fff; --base: var(--white); --low: #cfcbc2; --pointer: var(--ink); }
-    &[data-color="orange"] .cap { --hl: #ff8a5c; --base: var(--orange); --low: #c93d0b; --pointer: #fff; }
 
     & .label, & .text {
       max-width: 100%;
@@ -572,7 +565,6 @@
 </div>
 
 <script>
-  const CAP_COLORS = ["blue", "green", "white", "orange"];
   const $ = (id) => document.getElementById(id);
 
   const params = new Map();
@@ -743,7 +735,6 @@
     $("knobs").replaceChildren(...page.rows.map((row) => {
       const el = document.createElement("div");
       el.className = "row";
-      let column = 0;
       for (const section of row) {
         const s = document.createElement("div");
         s.className = "section";
@@ -751,7 +742,7 @@
         const title = document.createElement("h2");
         title.textContent = section.title;
         s.append(title);
-        for (const knob of section.knobs) s.append(buildKnob(knob, CAP_COLORS[column++ % CAP_COLORS.length]));
+        for (const knob of section.knobs) s.append(buildKnob(knob));
         el.append(s);
       }
       return el;
@@ -771,11 +762,10 @@
     return i >= 0 ? session.macros[i] || `Macro ${label}` : label;
   }
 
-  function buildKnob({ id, label }, color) {
+  function buildKnob({ id, label }) {
     const p = params.get(id);
     const el = document.createElement("div");
     el.className = "knob";
-    el.dataset.color = color;
     el.dataset.param = id;
     el.role = "slider";
     el.tabIndex = 0;
