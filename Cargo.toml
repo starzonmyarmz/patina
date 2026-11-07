@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["plugin", "xtask"]
+members = ["plugin", "presetgen", "xtask"]
 
 [profile.release]
 lto = "thin"

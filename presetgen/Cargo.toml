@@ -1,0 +1,9 @@
+[package]
+name = "presetgen"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+thousand_synths = { path = "../plugin" }
+serde_json = "1"
