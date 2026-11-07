@@ -162,6 +162,7 @@
     }
 
     & .page-name { color: var(--orange); text-transform: uppercase; }
+    & .audition-status { color: var(--orange); text-transform: uppercase; }
     & .dim { color: var(--screen-dim); }
     & .value { font-variant-numeric: tabular-nums; }
 
@@ -190,6 +191,8 @@
 
       & small { color: var(--muted); }
     }
+
+    & .key[aria-pressed="true"] small { color: var(--orange); }
 
     & .key[aria-selected="true"] {
       background: var(--ink);
@@ -507,6 +510,7 @@
     <div class="screen">
       <div class="line">
         <span class="page-name" id="screen-page">Osc</span>
+        <span class="audition-status" id="audition-status" hidden></span>
         <span class="dim" id="screen-graph"></span>
       </div>
       <div class="graph"><canvas id="graph" aria-hidden="true"></canvas></div>
@@ -554,7 +558,7 @@
         <option value="3">Relative #3 (16 = still)</option>
       </select></label>
       <p class="note">Match the encoder mode set in MIDI Control Center. Knobs send CC 102–117 and follow the page on screen. Bank 1 pads send CC 20–27: six pages, then previous and next preset.</p>
-      <p class="note">Knobs and preset pads start working once this window has been opened in the session.</p>
+      <p class="note">In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
       <div class="buttons">
         <button class="key" type="submit">done</button>
       </div>
@@ -577,6 +581,7 @@
   let touched = null;
   const filter = { category: "all", query: "" };
   let selectedKey = null;
+  let auditioning = false;
 
   const bridge = window.ipc
     ? (msg) => window.ipc.postMessage(JSON.stringify(msg))
@@ -641,11 +646,12 @@
         msg.params.forEach((p) => params.set(p.id, { ...p, value: p.default, text: "" }));
         pages = msg.pages;
         buildPageKeys();
-        showPage(pageIndex, false);
+        if (auditioning) showPage(pageIndex, false);
         return;
       case "presets":
         presets = msg.presets;
         renderBrowser();
+        renderAudition();
         return;
       case "values": {
         for (const { id, value, text } of msg.values) {
@@ -663,6 +669,14 @@
       case "session":
         session = msg;
         renderSession();
+        renderAudition();
+        return;
+      case "audition":
+        auditioning = msg.on;
+        if (!auditioning && filter.category === "unrated") filter.category = "all";
+        buildPageKeys();
+        renderAudition();
+        renderBrowser();
         return;
       case "page":
         if (msg.index !== pageIndex) showPage(msg.index, false);
@@ -710,6 +724,9 @@
 
   function buildPageKeys() {
     const nav = document.querySelector(".pages");
+    if (auditioning) return buildAuditionKeys(nav);
+    nav.role = "tablist";
+    nav.setAttribute("aria-label", "Pages");
     nav.replaceChildren(...pages.map((page, i) => {
       const key = document.createElement("button");
       key.type = "button";
@@ -722,6 +739,55 @@
       key.addEventListener("click", () => showPage(i));
       return key;
     }));
+    showPage(pageIndex, false);
+  }
+
+  // ---------- audition ----------
+
+  const AUDITION_KEYS = [
+    ["keep", "k", () => rate("keep")],
+    ["tweak", "t", () => rate("tweak")],
+    ["cut", "c", () => rate("cut")],
+    ["replay", "r", () => bridge({ type: "replay" })],
+    ["skip", "n", () => bridge({ type: "nextUnrated" })],
+    ["exit", "⇧a", () => bridge({ type: "audition", on: false })],
+  ];
+
+  function buildAuditionKeys(nav) {
+    nav.role = "toolbar";
+    nav.setAttribute("aria-label", "Audition");
+    nav.replaceChildren(...AUDITION_KEYS.map(([label, shortcut, action]) => {
+      const key = document.createElement("button");
+      key.type = "button";
+      key.className = "key";
+      key.dataset.verdict = label;
+      const hint = document.createElement("small");
+      hint.textContent = shortcut;
+      key.append(hint, label);
+      key.addEventListener("click", action);
+      return key;
+    }));
+    renderAudition();
+  }
+
+  function rate(verdict) {
+    bridge({ type: "rate", verdict: session.rating === verdict ? null : verdict });
+  }
+
+  function renderAudition() {
+    const status = $("audition-status");
+    status.hidden = !auditioning;
+    if (!auditioning) return;
+    const factory = presets.filter((p) => !p.user);
+    const rated = factory.filter((p) => p.rating).length;
+    const verdict = session.source === "factory" ? session.rating ?? "unrated" : "not rateable";
+    status.textContent = `Audition · ${verdict} · ${rated}/${factory.length}`;
+    for (const key of document.querySelectorAll(".pages .key")) {
+      if (["keep", "tweak", "cut"].includes(key.dataset.verdict)) {
+        key.setAttribute("aria-pressed", String(key.dataset.verdict === session.rating));
+        key.disabled = session.source !== "factory";
+      }
+    }
   }
 
   function showPage(i, notify = true) {
@@ -893,7 +959,8 @@
     return presets.filter((p) => {
       if (filter.category === "favorites" && !p.favorite) return false;
       if (filter.category === "user" && !p.user) return false;
-      if (!["all", "favorites", "user"].includes(filter.category) && p.category !== filter.category) return false;
+      if (filter.category === "unrated" && (p.user || p.rating)) return false;
+      if (!["all", "favorites", "user", "unrated"].includes(filter.category) && p.category !== filter.category) return false;
       const haystack = `${p.name} ${p.category} ${p.tags.join(" ")}`.toLowerCase();
       return words.every((w) => haystack.includes(w));
     });
@@ -906,6 +973,7 @@
       ["all", "All", counts(() => true)],
       ["favorites", "★ Favorites", counts((p) => p.favorite)],
       ["user", "User", counts((p) => p.user)],
+      ...(auditioning ? [["unrated", "Unrated", counts((p) => !p.user && !p.rating)]] : []),
       ...categories().map((c) => [c, c, counts((p) => p.category === c)]),
     ];
     nav.replaceChildren(...filters.map(([value, label, count]) => {
@@ -959,7 +1027,7 @@
     title.textContent = p.name;
     const meta = document.createElement("span");
     meta.className = "meta";
-    meta.textContent = p.user ? `${p.category} · user` : p.category;
+    meta.textContent = auditioning && p.rating ? `${p.category} · ${p.rating}` : p.user ? `${p.category} · user` : p.category;
     load.append(title, meta);
     load.addEventListener("click", () => loadPreset(p.key));
     load.addEventListener("dblclick", () => closeBrowser());
@@ -1099,6 +1167,9 @@
       return;
     }
     if (typing || e.metaKey || e.ctrlKey) return;
+    if (e.key === "A" && e.shiftKey) return bridge({ type: "audition", on: !auditioning });
+    const action = auditioning && AUDITION_KEYS.find(([, shortcut]) => shortcut === e.key);
+    if (action) return action[2]();
     if (/^[1-6]$/.test(e.key) && pages[Number(e.key) - 1]) showPage(Number(e.key) - 1);
     else if (e.key === "[") stepPreset(-1);
     else if (e.key === "]") stepPreset(1);
@@ -1431,7 +1502,8 @@
       || state.order.some((id, i) => Math.abs(state.values[id] - state.saved.values[i]) > 1e-4);
     const sendSession = () => {
       const s = state.session;
-      send({ type: "session", ...s, dirty: dirty(), comparing: state.stashed !== null });
+      const rating = state.presets.find((p) => p.key === s.key)?.rating ?? null;
+      send({ type: "session", ...s, rating, dirty: dirty(), comparing: state.stashed !== null });
     };
     const sendValues = (ids) => send({ type: "values", values: ids.map((id) => ({ id, value: state.values[id], text: text(state.params[id], state.values[id]) })) });
     const applyValues = (arr) => {
@@ -1452,13 +1524,39 @@
     return (msg) => {
       const handle = () => {
         const find = (key) => state.presets.find((p) => p.key === key);
+        const step = (wanted) => {
+          const from = state.presets.findIndex((p) => p.key === state.session.key);
+          for (let i = 1; i <= state.presets.length; i++) {
+            const p = state.presets[(from + i) % state.presets.length];
+            if (wanted(p)) return window.onPluginMessage && bridge({ type: "load", key: p.key });
+          }
+        };
         switch (msg.type) {
           case "ready":
             send({ type: "init", params: state.data.params, pages: state.data.pages });
             send({ type: "presets", presets: listing() });
             send({ type: "settings", knobMode: state.knobMode ?? 1 });
             sendValues(state.order);
+            send({ type: "audition", on: Boolean(state.audition) });
             sendSession();
+            return;
+          case "audition":
+            state.audition = msg.on;
+            send({ type: "audition", on: msg.on });
+            return;
+          case "replay":
+            return;
+          case "rate": {
+            const p = find(state.session.key);
+            if (!p || p.user) return send({ type: "error", message: "Only factory presets can be rated" });
+            p.rating = msg.verdict;
+            send({ type: "presets", presets: listing() });
+            if (msg.verdict) step((q) => q.key !== p.key);
+            else sendSession();
+            return;
+          }
+          case "nextUnrated":
+            step((q) => !q.user && !q.rating);
             return;
           case "knobMode":
             state.knobMode = msg.mode;
