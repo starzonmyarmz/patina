@@ -1728,10 +1728,6 @@ impl<P: ClapPlugin> Wrapper<P> {
                 break;
             }
         }
-
-        // After the state has been updated, notify the host about the new parameter values
-        let task_posted = self.schedule_gui(Task::RescanParamValues);
-        nih_debug_assert!(task_posted, "The task queue is full, dropping task...");
     }
 
     pub fn set_latency_samples(&self, samples: u32) {
@@ -1824,6 +1820,9 @@ impl<P: ClapPlugin> Wrapper<P> {
 
         // Reinitialize the plugin after loading state so it can respond to the new parameter values
         let task_posted = self.schedule_gui(Task::ParameterValuesChanged);
+        nih_debug_assert!(task_posted, "The task queue is full, dropping task...");
+
+        let task_posted = self.schedule_gui(Task::RescanParamValues);
         nih_debug_assert!(task_posted, "The task queue is full, dropping task...");
 
         // TODO: Right now there's no way to know if loading the state changed the GUI's size. We
@@ -3153,14 +3152,21 @@ impl<P: ClapPlugin> Wrapper<P> {
         }
         let length = u64::from_le_bytes(length_bytes);
 
-        let mut read_buffer: Vec<u8> = Vec::with_capacity(length as usize);
-        if !read_stream(&*stream, read_buffer.spare_capacity_mut()) {
-            nih_debug_assert_failure!(
-                "Error or end of stream while reading the state buffer from the stream."
-            );
-            return false;
+        // The length comes from the stream, so a corrupt state could claim any size. Growing the
+        // buffer as data arrives avoids trying to allocate that up front.
+        const CHUNK: usize = 1 << 16;
+        let mut read_buffer: Vec<u8> = Vec::new();
+        while (read_buffer.len() as u64) < length {
+            let start = read_buffer.len();
+            let chunk = CHUNK.min((length - start as u64) as usize);
+            read_buffer.resize(start + chunk, 0);
+            if !read_stream(&*stream, &mut read_buffer[start..]) {
+                nih_debug_assert_failure!(
+                    "Error or end of stream while reading the state buffer from the stream."
+                );
+                return false;
+            }
         }
-        read_buffer.set_len(length as usize);
 
         match state::deserialize_json(&read_buffer) {
             Some(mut state) => {
