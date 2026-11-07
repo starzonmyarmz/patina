@@ -15,8 +15,30 @@ Builds release bundles and copies them, ad-hoc signed, to
 REAPER, rescan plugins (**Preferences → Plug-ins → VST/CLAP → Re-scan**) and
 add **1000 Synths** to a track. Prefer the CLAP version.
 
-There's no custom UI yet; REAPER shows its generic parameter sliders, grouped
-by section.
+## Using it
+
+- **Pages**: six keys (or 1–6 on the keyboard) switch the 16 knobs between
+  Osc, Shape, Filter, Mod, FX and Macro. The screen draws whatever the last
+  touched knob controls: waveform, filter curve, envelope, LFO, echoes, EQ.
+- **Knobs**: drag up/down (Shift for fine), scroll, or arrow keys when
+  focused. Double-click resets. Click a switch knob to toggle it.
+- **Presets**: ‹ › (or [ ]) step through the browser's current filter.
+  Click the preset name or **browse** to search, filter by category and
+  star favorites. Arrow keys in the search box audition presets.
+- **Saving**: **save** writes a user preset to
+  `~/Library/Audio/Presets/1000 Synths/User/`. Factory presets are never
+  changed. The orange dot means unsaved changes; **compare** flips between
+  your edit and the saved preset.
+
+## Working on the UI
+
+```sh
+cargo run -p thousand_synths --example ui_mock   # writes ui/dev/mock.json
+cd ui && python3 -m http.server 8765               # open http://localhost:8765
+```
+
+Outside the plugin the page talks to a mock bridge built from the real
+parameter table, page layout and factory bank.
 
 ## Test
 
@@ -46,6 +68,10 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/engine/` | DSP: band-limited oscillators, filters, envelopes, LFOs, voices. |
 | `plugin/src/lib.rs` | nih-plug wrapper: MIDI handling, sample-accurate event splitting. |
 | `plugin/src/layout.rs` | Which parameter sits under each of the 16 knobs on each page. |
+| `plugin/src/library.rs` | Preset keys, favorites, saving and deleting user presets. |
+| `plugin/src/bridge.rs` | The editor's message protocol: values, presets, session, compare. |
+| `plugin/src/editor.rs` | The webview window and keyboard forwarding. |
+| `ui/index.html` | The whole interface: plain HTML, CSS and JavaScript. |
 | `plugin/src/macros.rs` | Per-preset macro matrix. |
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |
