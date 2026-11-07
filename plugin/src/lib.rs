@@ -2,6 +2,7 @@ pub mod app;
 pub mod audition;
 pub mod bridge;
 pub mod controls;
+mod chrome;
 mod editor;
 pub mod engine;
 pub mod layout;

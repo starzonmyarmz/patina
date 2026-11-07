@@ -15,3 +15,7 @@ baseview = { git = "https://github.com/RustAudio/baseview.git", rev = "9a0b42c09
 wry = "0.35"
 raw-window-handle = "0.5"
 keyboard-types = { version = "0.6", default-features = false }
+objc = "0.2"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }

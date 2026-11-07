@@ -86,6 +86,11 @@
     }
   }
 
+  :root.app-window {
+    & .app { padding-block-start: 4px; }
+    & header { padding-inline-start: 60px; }
+  }
+
   header {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -728,6 +733,7 @@
         return;
       case "devices":
         devices = msg;
+        document.documentElement.classList.add("app-window");
         renderDevices();
         return;
     }
@@ -1276,6 +1282,24 @@
     toast.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (toast.hidden = true), 2000);
+  }
+
+  // ---------- app window ----------
+
+  {
+    let last = null;
+    const header = document.querySelector("header");
+    header.addEventListener("pointerdown", (e) => {
+      if (!devices || e.target.closest("button, select, input")) return;
+      header.setPointerCapture(e.pointerId);
+      last = { x: e.screenX, y: e.screenY };
+    });
+    header.addEventListener("pointermove", (e) => {
+      if (!last) return;
+      bridge({ type: "moveWindow", dx: e.screenX - last.x, dy: e.screenY - last.y });
+      last = { x: e.screenX, y: e.screenY };
+    });
+    header.addEventListener("pointerup", () => (last = null));
   }
 
   // ---------- shortcuts ----------

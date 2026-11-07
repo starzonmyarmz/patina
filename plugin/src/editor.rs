@@ -146,6 +146,9 @@ impl Handler {
             Err(_) => builder.with_html(UI_HTML),
         };
         self.webview = builder.and_then(|b| b.build()).ok();
+        if crate::app::get().is_some() {
+            crate::chrome::hide_title_bar(window, SIZE);
+        }
     }
 
     fn send(&self, messages: Vec<Value>) {
@@ -157,7 +160,7 @@ impl Handler {
         }
     }
 
-    fn handle(&mut self, raw: &str) {
+    fn handle(&mut self, raw: &str, window: &mut Window) {
         let Ok(msg) = serde_json::from_str::<Value>(raw) else {
             return;
         };
@@ -168,6 +171,10 @@ impl Handler {
                 }
             }
             Some("keys") => self.page_has_focus = msg["active"].as_bool().unwrap_or(false),
+            Some("moveWindow") if crate::app::get().is_some() => {
+                let delta = |key: &str| msg[key].as_f64().unwrap_or(0.0);
+                crate::chrome::move_by(window, delta("dx"), delta("dy"));
+            }
             Some(kind) => {
                 self.ready |= kind == "ready";
                 let mut out = Vec::new();
@@ -213,7 +220,7 @@ impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, window: &mut Window) {
         self.build_webview(window);
         while let Ok(msg) = self.inbox.try_recv() {
-            self.handle(&msg);
+            self.handle(&msg, window);
         }
         if self.ready {
             let changed = self.changed.swap(false, Ordering::AcqRel);
