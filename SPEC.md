@@ -148,6 +148,12 @@ exact settings go in `docs/minilab-setup.md` (step 5).
    it try a huge allocation and abort (1 test; only corrupt projects hit
    this). Both need a nih-plug patch. Do it if step 4 forks nih-plug for the
    webview anyway.
-4. **Curation needs ears.** Rules and automated checks (silence, clipping, DC)
+4. **Presets can only be applied through the editor.** nih-plug lets a
+   plugin set its own parameters only through the GUI context it hands the
+   editor. Loading a preset from the browser is fine. Switching presets
+   from a MiniLab pad works only after the editor has opened once in the
+   session, unless nih-plug is patched to expose a parameter setter to
+   background tasks. Same fork decision as risk 3.
+5. **Curation needs ears.** Rules and automated checks (silence, clipping, DC)
    catch broken presets, not boring ones. Audition mode is how the bank gets
    good.
