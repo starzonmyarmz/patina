@@ -8,7 +8,7 @@ use raw_window_handle::{AppKitWindowHandle, HasRawWindowHandle, RawWindowHandle}
 use serde_json::{json, Value};
 use std::any::Any;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use wry::{WebView, WebViewBuilder};
 
@@ -66,23 +66,20 @@ impl Editor for WebEditor {
         let controls = self.controls.clone();
         let changed = self.changed.clone();
         changed.store(true, Ordering::Release);
-        let handle = Window::open_parented(&Parent(parent), options, move |window| {
+        let handle = Window::open_parented(&Parent(parent), options, move |_window| {
             let (tx, inbox) = channel();
-            let builder = WebViewBuilder::new_as_child(window)
-                .with_bounds(wry::Rect { x: 0, y: 0, width: SIZE.0, height: SIZE.1 })
-                .with_accept_first_mouse(true)
-                .with_devtools(cfg!(debug_assertions))
-                .with_background_color((232, 230, 225, 255))
-                .with_ipc_handler(move |msg| {
-                    let _ = tx.send(msg);
-                });
-            let builder = match std::env::var(DEV_URL_VAR) {
-                Ok(url) => builder.with_url(&url),
-                Err(_) => builder.with_html(UI_HTML),
-            };
-            let webview = builder.and_then(|b| b.build()).ok();
             let bridge = Bridge::new(params.clone(), controls);
-            Handler { context, params, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
+            Handler {
+                context,
+                params,
+                changed,
+                webview: None,
+                tx: Some(tx),
+                inbox,
+                bridge,
+                ready: false,
+                page_has_focus: false,
+            }
         });
         Box::new(Open(handle))
     }
@@ -113,6 +110,8 @@ struct Handler {
     params: Arc<ThousandParams>,
     changed: Arc<AtomicBool>,
     webview: Option<WebView>,
+    /// Taken when the webview is built.
+    tx: Option<Sender<String>>,
     inbox: Receiver<String>,
     bridge: Bridge,
     ready: bool,
@@ -121,6 +120,26 @@ struct Handler {
 }
 
 impl Handler {
+    /// Built on the first frame rather than in `spawn`: a standalone window
+    /// only attaches our view to its NSWindow after `spawn` returns, and
+    /// wry needs the window.
+    fn build_webview(&mut self, window: &mut Window) {
+        let Some(tx) = self.tx.take() else { return };
+        let builder = WebViewBuilder::new_as_child(window)
+            .with_bounds(wry::Rect { x: 0, y: 0, width: SIZE.0, height: SIZE.1 })
+            .with_accept_first_mouse(true)
+            .with_devtools(cfg!(debug_assertions))
+            .with_background_color((232, 230, 225, 255))
+            .with_ipc_handler(move |msg| {
+                let _ = tx.send(msg);
+            });
+        let builder = match std::env::var(DEV_URL_VAR) {
+            Ok(url) => builder.with_url(&url),
+            Err(_) => builder.with_html(UI_HTML),
+        };
+        self.webview = builder.and_then(|b| b.build()).ok();
+    }
+
     fn send(&self, messages: Vec<Value>) {
         let Some(webview) = &self.webview else {
             return;
@@ -154,7 +173,8 @@ impl Handler {
 }
 
 impl baseview::WindowHandler for Handler {
-    fn on_frame(&mut self, _window: &mut Window) {
+    fn on_frame(&mut self, window: &mut Window) {
+        self.build_webview(window);
         while let Ok(msg) = self.inbox.try_recv() {
             self.handle(&msg);
         }
