@@ -79,6 +79,15 @@ impl<P: Vst3Plugin> InitContext<P> for WrapperInitContext<'_, P> {
     fn set_current_voice_capacity(&self, _capacity: u32) {
         // This is only supported by CLAP
     }
+
+    fn gui_context(&self) -> Arc<dyn GuiContext> {
+        self.inner
+            .this
+            .borrow()
+            .upgrade()
+            .expect("the wrapper outlives its init context")
+            .make_gui_context()
+    }
 }
 
 impl<P: Vst3Plugin> ProcessContext<P> for WrapperProcessContext<'_, P> {

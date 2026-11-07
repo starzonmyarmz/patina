@@ -102,7 +102,7 @@ const OUTPUT_EVENT_QUEUE_CAPACITY: usize = 2048;
 
 pub struct Wrapper<P: ClapPlugin> {
     /// A reference to this object, upgraded to an `Arc<Self>` for the GUI context.
-    this: AtomicRefCell<Weak<Self>>,
+    pub(super) this: AtomicRefCell<Weak<Self>>,
 
     /// The wrapped plugin instance.
     plugin: Mutex<P>,
@@ -727,7 +727,7 @@ impl<P: ClapPlugin> Wrapper<P> {
         wrapper
     }
 
-    fn make_gui_context(self: Arc<Self>) -> Arc<WrapperGuiContext<P>> {
+    pub(super) fn make_gui_context(self: Arc<Self>) -> Arc<WrapperGuiContext<P>> {
         Arc::new(WrapperGuiContext {
             wrapper: self,
             #[cfg(debug_assertions)]

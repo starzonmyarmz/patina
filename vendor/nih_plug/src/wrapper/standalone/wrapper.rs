@@ -7,7 +7,7 @@ use raw_window_handle::HasRawWindowHandle;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::thread;
 
 use super::backend::Backend;
@@ -28,6 +28,7 @@ use crate::wrapper::util::process_wrapper;
 const EVENT_QUEUE_CAPACITY: usize = 2048;
 
 pub struct Wrapper<P: Plugin, B: Backend<P>> {
+    pub(super) this: AtomicRefCell<Weak<Self>>,
     backend: AtomicRefCell<B>,
 
     /// The wrapped plugin instance.
@@ -217,6 +218,7 @@ impl<P: Plugin, B: Backend<P>> Wrapper<P, B> {
         }
 
         let wrapper = Arc::new(Wrapper {
+            this: AtomicRefCell::new(Weak::new()),
             backend: AtomicRefCell::new(backend),
 
             plugin: Mutex::new(plugin),
@@ -255,6 +257,7 @@ impl<P: Plugin, B: Backend<P>> Wrapper<P, B> {
             current_latency: AtomicU32::new(0),
         });
 
+        *wrapper.this.borrow_mut() = Arc::downgrade(&wrapper);
         *wrapper.event_loop.borrow_mut() =
             Some(OsEventLoop::new_and_spawn(Arc::downgrade(&wrapper)));
 
@@ -583,7 +586,7 @@ impl<P: Plugin, B: Backend<P>> Wrapper<P, B> {
         );
     }
 
-    fn make_gui_context(self: Arc<Self>) -> Arc<WrapperGuiContext<P, B>> {
+    pub(super) fn make_gui_context(self: Arc<Self>) -> Arc<WrapperGuiContext<P, B>> {
         Arc::new(WrapperGuiContext {
             wrapper: self,
             #[cfg(debug_assertions)]

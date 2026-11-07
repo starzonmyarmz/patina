@@ -1,7 +1,9 @@
 //! A context passed during plugin initialization.
 
+use std::sync::Arc;
+
 use super::PluginApi;
-use crate::prelude::Plugin;
+use crate::prelude::{GuiContext, Plugin};
 
 /// Callbacks the plugin can make while it is being initialized. This is passed to the plugin during
 /// [`Plugin::initialize()`][crate::plugin::Plugin::initialize()].
@@ -34,4 +36,12 @@ pub trait InitContext<P: Plugin> {
     /// runtime allows the host to better optimize polyphonic modulation, or to switch to strictly
     /// monophonic modulation when dropping the capacity down to 1.
     fn set_current_voice_capacity(&self, capacity: u32);
+
+    /// A context for setting parameters from outside an editor, for instance from a background
+    /// task driven by MIDI. It must only be used from the main thread, like an editor's context.
+    ///
+    /// The context keeps the plugin's wrapper alive. Drop it in
+    /// [`Plugin::deactivate()`][crate::prelude::Plugin::deactivate()] at the latest, or the
+    /// plugin is never freed.
+    fn gui_context(&self) -> Arc<dyn GuiContext>;
 }

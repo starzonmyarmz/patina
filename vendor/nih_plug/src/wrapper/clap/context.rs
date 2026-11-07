@@ -88,6 +88,15 @@ impl<P: ClapPlugin> InitContext<P> for WrapperInitContext<'_, P> {
     fn set_current_voice_capacity(&self, capacity: u32) {
         self.wrapper.set_current_voice_capacity(capacity)
     }
+
+    fn gui_context(&self) -> Arc<dyn GuiContext> {
+        self.wrapper
+            .this
+            .borrow()
+            .upgrade()
+            .expect("the wrapper outlives its init context")
+            .make_gui_context()
+    }
 }
 
 impl<P: ClapPlugin> ProcessContext<P> for WrapperProcessContext<'_, P> {
