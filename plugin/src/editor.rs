@@ -15,7 +15,7 @@ use wry::{WebView, WebViewBuilder};
 const SIZE: (u32, u32) = (960, 540);
 const UI_HTML: &str = include_str!("../../ui/index.html");
 /// Set to a dev server URL (e.g. http://localhost:5173) to load the UI live.
-const DEV_URL_VAR: &str = "THOUSAND_SYNTHS_UI_URL";
+const DEV_URL_VAR: &str = "PATINA_UI_URL";
 
 pub struct WebEditor {
     params: Arc<ThousandParams>,
@@ -39,7 +39,7 @@ unsafe impl HasRawWindowHandle for Parent {
                 handle.ns_view = ns_view;
                 RawWindowHandle::AppKit(handle)
             }
-            _ => unreachable!("1000 Synths only supports macOS"),
+            _ => unreachable!("Patina only supports macOS"),
         }
     }
 }
@@ -58,7 +58,7 @@ unsafe impl Send for Open {}
 impl Editor for WebEditor {
     fn spawn(&self, parent: ParentWindowHandle, context: Arc<dyn GuiContext>) -> Box<dyn Any + Send> {
         let options = WindowOpenOptions {
-            title: "1000 Synths".into(),
+            title: "Patina".into(),
             size: Size::new(SIZE.0 as f64, SIZE.1 as f64),
             scale: WindowScalePolicy::SystemScaleFactor,
         };

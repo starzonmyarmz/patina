@@ -1,7 +1,7 @@
 use std::time::Instant;
-use thousand_synths::engine::{Engine, Transport, CHUNK};
-use thousand_synths::macros::{MacroMatrix, Target};
-use thousand_synths::params::{Pid, PlainValues, FILTER_TYPES, OSC_TYPES};
+use patina::engine::{Engine, Transport, CHUNK};
+use patina::macros::{MacroMatrix, Target};
+use patina::params::{Pid, PlainValues, FILTER_TYPES, OSC_TYPES};
 
 const SR: f32 = 48_000.0;
 
@@ -232,7 +232,7 @@ fn mod_wheel_drives_macro_one() {
     assert!(peak(&closed[7200..]) < 1e-3, "{}", peak(&closed[7200..]));
 }
 
-/// cargo test --release -p thousand_synths --test engine -- --ignored --nocapture
+/// cargo test --release -p patina --test engine -- --ignored --nocapture
 #[test]
 #[ignore]
 fn cpu_budget_for_a_dense_pad() {

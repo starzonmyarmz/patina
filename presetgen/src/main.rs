@@ -4,8 +4,8 @@ mod check;
 use archetypes::{descriptor, Archetype, Category, Vary, ARCHETYPES, NEUTRAL};
 use std::collections::HashSet;
 use std::path::PathBuf;
-use thousand_synths::params::{PlainValues, Values};
-use thousand_synths::presets::{matrix_from, Bank, MacroDef, MacroTarget, Preset, FORMAT};
+use patina::params::{PlainValues, Values};
+use patina::presets::{matrix_from, Bank, MacroDef, MacroTarget, Preset, FORMAT};
 
 const SEED: u64 = 0x1000_5EED;
 const VARIATIONS: usize = 6;

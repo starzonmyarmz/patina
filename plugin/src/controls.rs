@@ -302,7 +302,7 @@ mod tests {
     }
 
     fn setup(tag: &str) -> (PathBuf, Controls, ThousandParams, FakeHost) {
-        let root = std::env::temp_dir().join(format!("1000-synths-controls-{tag}-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("patina-controls-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let controls = Controls::new(Library::at(root.join("User"), root.join("state.json")));
         let host = FakeHost(std::array::from_fn(|i| Pid::ALL[i].spec().normalize(Pid::ALL[i].spec().default)));

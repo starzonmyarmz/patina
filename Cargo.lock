@@ -1645,6 +1645,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "patina"
+version = "0.1.0"
+dependencies = [
+ "baseview",
+ "keyboard-types",
+ "nih_plug",
+ "raw-window-handle",
+ "serde",
+ "serde_json",
+ "wry",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1813,8 +1826,8 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 name = "presetgen"
 version = "0.1.0"
 dependencies = [
+ "patina",
  "serde_json",
- "thousand_synths",
 ]
 
 [[package]]
@@ -2361,19 +2374,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "thousand_synths"
-version = "0.1.0"
-dependencies = [
- "baseview",
- "keyboard-types",
- "nih_plug",
- "raw-window-handle",
- "serde",
- "serde_json",
- "wry",
 ]
 
 [[package]]

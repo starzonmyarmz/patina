@@ -1,4 +1,4 @@
-use thousand_synths::params::Pid::{self, *};
+use patina::params::Pid::{self, *};
 
 pub enum Vary {
     /// Uniform in normalized space between two plain values.

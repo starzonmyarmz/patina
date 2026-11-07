@@ -1,6 +1,6 @@
 # MiniLab MK2 setup
 
-1000 Synths expects the MiniLab to send the messages below. Set them once in
+Patina expects the MiniLab to send the messages below. Set them once in
 Arturia **MIDI Control Center** (MCC) and store them to a memory on the
 device. The plugin's **midi** dialog shows the same summary.
 

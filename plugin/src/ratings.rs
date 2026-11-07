@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn round_trips_through_a_file() {
-        let dir = std::env::temp_dir().join(format!("1000-synths-ratings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patina-ratings-{}", std::process::id()));
         let path = dir.join("ratings.json");
         let mut r = Ratings::default();
         r.set("Acid Bass", Some(Rating { verdict: Verdict::Cut, edit: None }));

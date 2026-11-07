@@ -2,13 +2,13 @@
 //! real parameter table, pages and factory bank.
 
 use serde_json::json;
-use thousand_synths::bridge::{describe_pages, describe_params};
-use thousand_synths::library::Library;
-use thousand_synths::params::Pid;
-use thousand_synths::presets::factory;
+use patina::bridge::{describe_pages, describe_params};
+use patina::library::Library;
+use patina::params::Pid;
+use patina::presets::factory;
 
 fn main() {
-    let empty = std::env::temp_dir().join("1000-synths-ui-mock");
+    let empty = std::env::temp_dir().join("patina-ui-mock");
     let order = Library::at(empty.join("User"), empty.join("state.json")).keys();
     let mut bank: Vec<_> = factory().iter().collect();
     bank.sort_by_key(|p| order.iter().position(|k| *k == format!("factory/{}", p.name)));

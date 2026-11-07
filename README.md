@@ -1,4 +1,4 @@
-# 1000 Synths
+# Patina
 
 A polysynth plugin (VST3 + CLAP) in Rust, built with
 [nih-plug](https://github.com/robbert-vdh/nih-plug), patched in `vendor/` (see
@@ -14,7 +14,7 @@ and build order.
 Builds release bundles and copies them, ad-hoc signed, to
 `~/Library/Audio/Plug-Ins/VST3` and `~/Library/Audio/Plug-Ins/CLAP`. In
 REAPER, rescan plugins (**Preferences → Plug-ins → VST/CLAP → Re-scan**) and
-add **1000 Synths** to a track. Prefer the CLAP version.
+add **Patina** to a track. Prefer the CLAP version.
 
 ## Using it
 
@@ -27,7 +27,7 @@ add **1000 Synths** to a track. Prefer the CLAP version.
   Click the preset name or **browse** to search, filter by category and
   star favorites. Arrow keys in the search box audition presets.
 - **Saving**: **save** writes a user preset to
-  `~/Library/Audio/Presets/1000 Synths/User/`. Factory presets are never
+  `~/Library/Audio/Presets/Patina/User/`. Factory presets are never
   changed. The orange dot means unsaved changes; **compare** flips between
   your edit and the saved preset.
 
@@ -39,8 +39,8 @@ screen; bank 1 pads switch pages and step presets.
 ## Working on the UI
 
 ```sh
-cargo run -p thousand_synths --example ui_mock   # writes ui/dev/mock.json
-cd ui && python3 -m http.server 8765               # open http://localhost:8765
+cargo run -p patina --example ui_mock         # writes ui/dev/mock.json
+cd ui && python3 -m http.server 8765         # open http://localhost:8765
 ```
 
 Outside the plugin the page talks to a mock bridge built from the real
@@ -49,8 +49,8 @@ parameter table, page layout and factory bank.
 ## Test
 
 ```sh
-cargo test -p thousand_synths
-cargo test --release -p thousand_synths --test engine -- --ignored --nocapture   # CPU budget
+cargo test -p patina
+cargo test --release -p patina --test engine -- --ignored --nocapture   # CPU budget
 ```
 
 ## Factory presets

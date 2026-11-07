@@ -1,6 +1,6 @@
-use thousand_synths::engine::{Engine, Transport, CHUNK};
-use thousand_synths::macros::{MacroMatrix, MACRO_PIDS};
-use thousand_synths::params::{Pid, PlainValues, Values};
+use patina::engine::{Engine, Transport, CHUNK};
+use patina::macros::{MacroMatrix, MACRO_PIDS};
+use patina::params::{Pid, PlainValues, Values};
 
 const SR: f32 = 48_000.0;
 /// Loudest 50 ms RMS window every preset is normalized to.

@@ -20,7 +20,7 @@ use params::ThousandParams;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-pub struct ThousandSynths {
+pub struct Patina {
     params: Arc<ThousandParams>,
     controls: Arc<Controls>,
     engine: Engine,
@@ -30,7 +30,7 @@ pub struct ThousandSynths {
     phrase_seen: u32,
 }
 
-impl Default for ThousandSynths {
+impl Default for Patina {
     fn default() -> Self {
         audition::phrases();
         Self {
@@ -50,7 +50,7 @@ pub enum Task {
     Controls,
 }
 
-impl ThousandSynths {
+impl Patina {
     fn handle(&mut self, event: NoteEvent<()>) {
         match event {
             NoteEvent::NoteOn { note, velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
@@ -97,8 +97,8 @@ impl ThousandSynths {
     }
 }
 
-impl Plugin for ThousandSynths {
-    const NAME: &'static str = "1000 Synths";
+impl Plugin for Patina {
+    const NAME: &'static str = "Patina";
     const VENDOR: &'static str = "Dan Marino";
     const URL: &'static str = "";
     const EMAIL: &'static str = "";
@@ -208,18 +208,18 @@ impl Plugin for ThousandSynths {
     }
 }
 
-impl ClapPlugin for ThousandSynths {
-    const CLAP_ID: &'static str = "com.danmarino.1000-synths";
+impl ClapPlugin for Patina {
+    const CLAP_ID: &'static str = "com.danmarino.patina";
     const CLAP_DESCRIPTION: Option<&'static str> = Some("A polysynth with a curated bank of presets");
     const CLAP_MANUAL_URL: Option<&'static str> = None;
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
     const CLAP_FEATURES: &'static [ClapFeature] = &[ClapFeature::Instrument, ClapFeature::Synthesizer, ClapFeature::Stereo];
 }
 
-impl Vst3Plugin for ThousandSynths {
-    const VST3_CLASS_ID: [u8; 16] = *b"1000SynthsDanMrn";
+impl Vst3Plugin for Patina {
+    const VST3_CLASS_ID: [u8; 16] = *b"PatinaSynthDnMrn";
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[Vst3SubCategory::Instrument, Vst3SubCategory::Synth];
 }
 
-nih_export_clap!(ThousandSynths);
-nih_export_vst3!(ThousandSynths);
+nih_export_clap!(Patina);
+nih_export_vst3!(Patina);

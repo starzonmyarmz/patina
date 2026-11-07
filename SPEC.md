@@ -1,4 +1,4 @@
-# 1000 Synths — plugin spec
+# Patina — plugin spec
 
 A polysynth plugin in Rust, grown out of the `1000Synths.jsfx` prototype
 (`~/Code/jsfx/1000-synths`, frozen as a reference). Built for one person on one
@@ -102,9 +102,9 @@ One JSON object per preset:
 - Macro amounts are in normalized units (−1…1). A macro at 0 leaves the preset
   exactly as saved; turning it up adds `amount × macro` to each target.
 - Factory presets are compiled into the binary.
-- User presets: `~/Library/Audio/Presets/1000 Synths/User/<name>.json`.
+- User presets: `~/Library/Audio/Presets/Patina/User/<name>.json`.
 - Favorites, ratings and settings:
-  `~/Library/Application Support/1000 Synths/state.json`.
+  `~/Library/Application Support/Patina/state.json`.
 - The DAW project stores the full current state (params, macros, preset name,
   dirty flag), so a project reopens exactly as left even if the preset file
   changed.

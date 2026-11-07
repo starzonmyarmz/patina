@@ -35,7 +35,7 @@ fn category_rank(category: &str) -> usize {
 impl Library {
     pub fn open() -> Self {
         let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
-        Self::at(presets::user_dir(), home.join("Library/Application Support/1000 Synths/state.json"))
+        Self::at(presets::user_dir(), home.join("Library/Application Support/Patina/state.json"))
     }
 
     pub fn at(user_dir: PathBuf, state_path: PathBuf) -> Self {
@@ -179,7 +179,7 @@ mod tests {
     use crate::params::PlainValues;
 
     fn temp_library(tag: &str) -> (PathBuf, Library) {
-        let root = std::env::temp_dir().join(format!("1000-synths-library-{tag}-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("patina-library-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let lib = Library::at(root.join("User"), root.join("state.json"));
         (root, lib)

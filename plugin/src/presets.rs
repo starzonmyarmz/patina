@@ -168,7 +168,7 @@ pub fn factory() -> &'static [Preset] {
 
 pub fn user_dir() -> PathBuf {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
-    home.join("Library/Audio/Presets/1000 Synths/User")
+    home.join("Library/Audio/Presets/Patina/User")
 }
 
 /// Every readable preset in `dir`, sorted by name. Unreadable files are skipped.
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn save_and_load_user_presets() {
-        let dir = std::env::temp_dir().join(format!("1000-synths-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("patina-test-{}", std::process::id()));
         let p = sample();
         let path = save_to(&dir, &p).unwrap();
         assert_eq!(path.file_name().unwrap(), "Wide_Saw_ 1.json");

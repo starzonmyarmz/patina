@@ -390,7 +390,7 @@ mod tests {
     }
 
     fn setup(tag: &str) -> (PathBuf, Bridge, FakeHost) {
-        let root = std::env::temp_dir().join(format!("1000-synths-bridge-{tag}-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("patina-bridge-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let library = Library::at(root.join("User"), root.join("state.json"));
         (root, Bridge::new(Arc::new(ThousandParams::default()), Arc::new(Controls::new(library))), FakeHost::new())
