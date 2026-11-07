@@ -118,7 +118,7 @@ exact settings go in `docs/minilab-setup.md` (step 5).
   Arturia's relative encodings; the one in use is a setting. Verify which
   modes the MK2 firmware offers before writing the guide.
 - **Clickable knobs 1 and 9**: fine adjust while held, if the device sends a
-  usable message for the click.
+  usable message for the click. Not done yet.
 - **Pad bank 1**: CC 20–27, momentary. Pages Osc, Shape, Filter, Mod, FX,
   Macro, previous preset, next preset.
 - **Pad bank 2**: notes, as the factory setup sends them.
@@ -148,12 +148,13 @@ exact settings go in `docs/minilab-setup.md` (step 5).
    it try a huge allocation and abort (1 test; only corrupt projects hit
    this). Both need a nih-plug patch. Do it if step 4 forks nih-plug for the
    webview anyway.
-4. **Presets can only be applied through the editor.** nih-plug lets a
-   plugin set its own parameters only through the GUI context it hands the
-   editor. Loading a preset from the browser is fine. Switching presets
-   from a MiniLab pad works only after the editor has opened once in the
-   session, unless nih-plug is patched to expose a parameter setter to
-   background tasks. Same fork decision as risk 3.
+4. **Parameters can only be set through the editor's context.** nih-plug
+   lets a plugin set its own parameters only through the GUI context it
+   hands the editor. The plugin keeps that context after the window closes,
+   so MiniLab knobs and preset pads work once the editor has opened in the
+   session, not before. The context is dropped on deactivate, because it
+   holds the plugin wrapper alive. Patching nih-plug to hand a context to
+   the task executor would remove the limit. Same fork decision as risk 3.
 5. **Curation needs ears.** Rules and automated checks (silence, clipping, DC)
    catch broken presets, not boring ones. Audition mode is how the bank gets
    good.

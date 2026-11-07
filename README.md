@@ -30,6 +30,11 @@ add **1000 Synths** to a track. Prefer the CLAP version.
   changed. The orange dot means unsaved changes; **compare** flips between
   your edit and the saved preset.
 
+## MiniLab MK2
+
+See [docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on
+screen; bank 1 pads switch pages and step presets.
+
 ## Working on the UI
 
 ```sh
@@ -72,6 +77,8 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/bridge.rs` | The editor's message protocol: values, presets, session, compare. |
 | `plugin/src/editor.rs` | The webview window and keyboard forwarding. |
 | `ui/index.html` | The whole interface: plain HTML, CSS and JavaScript. |
+| `plugin/src/minilab.rs` | MiniLab CC numbers and relative encoder decoding. |
+| `plugin/src/controls.rs` | Hardware state shared by the audio thread, the GUI-thread task and the editor. |
 | `plugin/src/macros.rs` | Per-preset macro matrix. |
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |
