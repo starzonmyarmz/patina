@@ -273,6 +273,31 @@ impl ThousandParams {
         self.generation.fetch_add(1, Ordering::Release);
     }
 
+    pub fn ptr(&self, pid: Pid) -> ParamPtr {
+        match &self.slots[pid as usize] {
+            Slot::Float(p) => p.as_ptr(),
+            Slot::Int(p) => p.as_ptr(),
+            Slot::Bool(p) => p.as_ptr(),
+        }
+    }
+
+    /// The value the user set, ignoring host modulation.
+    pub fn normalized(&self, pid: Pid) -> f32 {
+        match &self.slots[pid as usize] {
+            Slot::Float(p) => p.unmodulated_normalized_value(),
+            Slot::Int(p) => p.unmodulated_normalized_value(),
+            Slot::Bool(p) => p.unmodulated_normalized_value(),
+        }
+    }
+
+    pub fn display(&self, pid: Pid, normalized: f32) -> String {
+        match &self.slots[pid as usize] {
+            Slot::Float(p) => p.normalized_value_to_string(normalized, true),
+            Slot::Int(p) => p.normalized_value_to_string(normalized, true),
+            Slot::Bool(p) => p.normalized_value_to_string(normalized, true),
+        }
+    }
+
     /// For the audio thread: the macro matrix if it changed since `seen`.
     /// Never blocks; a busy lock just means trying again next block.
     pub fn matrix_if_changed(&self, seen: &mut u32) -> Option<MacroMatrix> {

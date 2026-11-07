@@ -1,3 +1,4 @@
+mod editor;
 pub mod engine;
 pub mod macros;
 pub mod params;
@@ -61,6 +62,10 @@ impl Plugin for ThousandSynths {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        Some(Box::new(editor::WebEditor::new(self.params.clone())))
     }
 
     fn initialize(
