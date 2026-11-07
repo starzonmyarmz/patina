@@ -1,5 +1,9 @@
+use crate::macros::MacroMatrix;
+use crate::presets::{matrix_from, Session};
 use nih_plug::prelude::*;
-use std::sync::Arc;
+use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 
 pub enum Kind {
     /// `skew` is the exponent passed to `FloatRange::skew_factor`; 0 is linear.
@@ -237,11 +241,48 @@ pub enum Slot {
 
 pub struct ThousandParams {
     slots: Vec<Slot>,
+    session: Mutex<Session>,
+    matrix: Mutex<MacroMatrix>,
+    generation: AtomicU32,
 }
 
 impl Default for ThousandParams {
     fn default() -> Self {
-        Self { slots: SPECS.iter().map(build).collect() }
+        Self {
+            slots: SPECS.iter().map(build).collect(),
+            session: Mutex::default(),
+            matrix: Mutex::default(),
+            generation: AtomicU32::new(0),
+        }
+    }
+}
+
+impl ThousandParams {
+    pub fn session(&self) -> Session {
+        self.session.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    pub fn set_session(&self, session: Session) {
+        let matrix = matrix_from(&session.macros);
+        if let Ok(mut s) = self.session.lock() {
+            *s = session;
+        }
+        if let Ok(mut m) = self.matrix.lock() {
+            *m = matrix;
+        }
+        self.generation.fetch_add(1, Ordering::Release);
+    }
+
+    /// For the audio thread: the macro matrix if it changed since `seen`.
+    /// Never blocks; a busy lock just means trying again next block.
+    pub fn matrix_if_changed(&self, seen: &mut u32) -> Option<MacroMatrix> {
+        let generation = self.generation.load(Ordering::Acquire);
+        if generation == *seen {
+            return None;
+        }
+        let matrix = *self.matrix.try_lock().ok()?;
+        *seen = generation;
+        Some(matrix)
     }
 }
 
@@ -342,6 +383,19 @@ unsafe impl Params for ThousandParams {
             })
             .collect()
     }
+
+    fn serialize_fields(&self) -> BTreeMap<String, String> {
+        let mut fields = BTreeMap::new();
+        if let Ok(json) = serde_json::to_string(&self.session()) {
+            fields.insert("session".to_string(), json);
+        }
+        fields
+    }
+
+    fn deserialize_fields(&self, serialized: &BTreeMap<String, String>) {
+        let session = serialized.get("session").and_then(|json| serde_json::from_str(json).ok()).unwrap_or_default();
+        self.set_session(session);
+    }
 }
 
 #[cfg(test)]
@@ -386,6 +440,30 @@ mod tests {
         for &pid in Pid::ALL {
             assert_eq!(Pid::from_id(pid.spec().id), Some(pid));
         }
+    }
+
+    #[test]
+    fn session_survives_state_and_reaches_the_audio_thread() {
+        use crate::presets::{MacroDef, MacroTarget, Source};
+        let a = ThousandParams::default();
+        let mut seen = u32::MAX;
+        assert_eq!(a.matrix_if_changed(&mut seen), Some(MacroMatrix::default()));
+        assert_eq!(a.matrix_if_changed(&mut seen), None);
+
+        let session = Session {
+            name: "Bloom Pad".into(),
+            category: "Pad".into(),
+            source: Source::User,
+            macros: vec![MacroDef { name: "Open".into(), targets: vec![MacroTarget { param: "flt_cutoff".into(), amount: 0.4 }] }],
+            saved: None,
+        };
+        let b = ThousandParams::default();
+        a.set_session(session.clone());
+        b.deserialize_fields(&a.serialize_fields());
+        assert_eq!(b.session(), session);
+        let mut seen_b = 0;
+        let m = b.matrix_if_changed(&mut seen_b).unwrap();
+        assert_eq!(m.0[0][0].unwrap().pid, Pid::Cutoff);
     }
 
     #[test]

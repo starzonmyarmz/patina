@@ -1,6 +1,7 @@
 pub mod engine;
 pub mod macros;
 pub mod params;
+pub mod presets;
 
 use engine::{Engine, Transport, CHUNK};
 use nih_plug::prelude::*;
@@ -11,11 +12,12 @@ use std::sync::Arc;
 pub struct ThousandSynths {
     params: Arc<ThousandParams>,
     engine: Engine,
+    matrix_seen: u32,
 }
 
 impl Default for ThousandSynths {
     fn default() -> Self {
-        Self { params: Arc::new(ThousandParams::default()), engine: Engine::new(48_000.0) }
+        Self { params: Arc::new(ThousandParams::default()), engine: Engine::new(48_000.0), matrix_seen: u32::MAX }
     }
 }
 
@@ -83,6 +85,9 @@ impl Plugin for ThousandSynths {
         _aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
+        if let Some(matrix) = self.params.matrix_if_changed(&mut self.matrix_seen) {
+            self.engine.set_macros(matrix);
+        }
         let t = context.transport();
         let transport = Transport { playing: t.playing, tempo: t.tempo, pos_beats: t.pos_beats() };
         self.engine.update(&*self.params, transport);
