@@ -1,28 +1,43 @@
 pub mod bridge;
+pub mod controls;
 mod editor;
 pub mod engine;
 pub mod layout;
 pub mod library;
 pub mod macros;
+pub mod minilab;
 pub mod params;
 pub mod presets;
 
 use engine::{Engine, Transport, CHUNK};
 use nih_plug::prelude::*;
+use controls::Controls;
+use library::Library;
 use params::ThousandParams;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
 pub struct ThousandSynths {
     params: Arc<ThousandParams>,
+    controls: Arc<Controls>,
     engine: Engine,
     matrix_seen: u32,
 }
 
 impl Default for ThousandSynths {
     fn default() -> Self {
-        Self { params: Arc::new(ThousandParams::default()), engine: Engine::new(48_000.0), matrix_seen: u32::MAX }
+        Self {
+            params: Arc::new(ThousandParams::default()),
+            controls: Arc::new(Controls::new(Library::open())),
+            engine: Engine::new(48_000.0),
+            matrix_seen: u32::MAX,
+        }
     }
+}
+
+pub enum Task {
+    /// Apply MiniLab knob turns and preset pads on the GUI thread.
+    Controls,
 }
 
 impl ThousandSynths {
@@ -32,6 +47,7 @@ impl ThousandSynths {
             NoteEvent::NoteOn { note, .. } | NoteEvent::NoteOff { note, .. } => self.engine.note_off(note),
             NoteEvent::MidiPitchBend { value, .. } => self.engine.set_pitch_bend(value),
             NoteEvent::MidiChannelPressure { pressure, .. } => self.engine.set_aftertouch(pressure),
+            NoteEvent::MidiCC { cc, value, .. } if self.controls.midi_cc(cc, (value * 127.0).round() as u8) => {}
             NoteEvent::MidiCC { cc, value, .. } => match cc {
                 1 => self.engine.set_mod_wheel(value),
                 64 => self.engine.set_sustain(value >= 0.5),
@@ -61,14 +77,26 @@ impl Plugin for ThousandSynths {
     const SAMPLE_ACCURATE_AUTOMATION: bool = false;
 
     type SysExMessage = ();
-    type BackgroundTask = ();
+    type BackgroundTask = Task;
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
     }
 
     fn editor(&mut self, _executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        Some(Box::new(editor::WebEditor::new(self.params.clone())))
+        Some(Box::new(editor::WebEditor::new(self.params.clone(), self.controls.clone())))
+    }
+
+    fn task_executor(&mut self) -> TaskExecutor<Self> {
+        let params = self.params.clone();
+        let controls = self.controls.clone();
+        Box::new(move |task| match task {
+            Task::Controls => controls.run(&params),
+        })
+    }
+
+    fn deactivate(&mut self) {
+        self.controls.drop_context();
     }
 
     fn initialize(
@@ -122,6 +150,9 @@ impl Plugin for ThousandSynths {
             self.engine.update(&*self.params, transport);
             self.engine.render(&mut left[pos..end], &mut right[pos..end]);
             pos = end;
+        }
+        if self.controls.take_pending() {
+            context.execute_gui(Task::Controls);
         }
         ProcessStatus::Normal
     }

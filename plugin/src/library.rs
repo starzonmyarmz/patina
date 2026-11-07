@@ -19,6 +19,8 @@ pub struct Library {
 struct State {
     #[serde(default)]
     favorites: BTreeSet<String>,
+    #[serde(default)]
+    knob_mode: Option<u8>,
 }
 
 /// Browser order for the factory categories; others follow alphabetically.
@@ -69,6 +71,15 @@ impl Library {
     /// Keys in browser order.
     pub fn keys(&self) -> Vec<String> {
         self.sorted().into_iter().map(|(key, ..)| key).collect()
+    }
+
+    pub fn knob_mode(&self) -> Option<u8> {
+        self.state.knob_mode
+    }
+
+    pub fn set_knob_mode(&mut self, mode: u8) -> io::Result<()> {
+        self.state.knob_mode = Some(mode);
+        self.write_state()
     }
 
     pub fn get(&self, key: &str) -> Option<(&Preset, Source)> {

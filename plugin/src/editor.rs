@@ -1,6 +1,6 @@
-use crate::bridge::{Bridge, Host};
-use crate::library::Library;
-use crate::params::{Pid, ThousandParams};
+use crate::bridge::{Bridge, ContextHost};
+use crate::controls::Controls;
+use crate::params::ThousandParams;
 use baseview::{Event, EventStatus, Size, Window, WindowHandle, WindowOpenOptions, WindowScalePolicy};
 use keyboard_types::{KeyState, Modifiers};
 use nih_plug::prelude::{Editor, GuiContext, ParentWindowHandle};
@@ -19,12 +19,13 @@ const DEV_URL_VAR: &str = "THOUSAND_SYNTHS_UI_URL";
 
 pub struct WebEditor {
     params: Arc<ThousandParams>,
+    controls: Arc<Controls>,
     changed: Arc<AtomicBool>,
 }
 
 impl WebEditor {
-    pub fn new(params: Arc<ThousandParams>) -> Self {
-        Self { params, changed: Arc::new(AtomicBool::new(true)) }
+    pub fn new(params: Arc<ThousandParams>, controls: Arc<Controls>) -> Self {
+        Self { params, controls, changed: Arc::new(AtomicBool::new(true)) }
     }
 }
 
@@ -62,6 +63,8 @@ impl Editor for WebEditor {
             scale: WindowScalePolicy::SystemScaleFactor,
         };
         let params = self.params.clone();
+        let controls = self.controls.clone();
+        controls.keep_context(&context);
         let changed = self.changed.clone();
         changed.store(true, Ordering::Release);
         let handle = Window::open_parented(&Parent(parent), options, move |window| {
@@ -79,8 +82,8 @@ impl Editor for WebEditor {
                 Err(_) => builder.with_html(UI_HTML),
             };
             let webview = builder.and_then(|b| b.build()).ok();
-            let bridge = Bridge::new(params.clone(), Library::open());
-            Handler { context, params, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
+            let bridge = Bridge::new(params.clone(), controls.clone());
+            Handler { context, params, controls, changed, webview, inbox, bridge, ready: false, page_has_focus: false }
         });
         Box::new(Open(handle))
     }
@@ -109,6 +112,7 @@ impl Editor for WebEditor {
 struct Handler {
     context: Arc<dyn GuiContext>,
     params: Arc<ThousandParams>,
+    controls: Arc<Controls>,
     changed: Arc<AtomicBool>,
     webview: Option<WebView>,
     inbox: Receiver<String>,
@@ -116,26 +120,6 @@ struct Handler {
     ready: bool,
     /// Something on the page (a knob, the search box) has keyboard focus.
     page_has_focus: bool,
-}
-
-struct Gui<'a> {
-    context: &'a dyn GuiContext,
-    params: &'a ThousandParams,
-}
-
-impl Host for Gui<'_> {
-    fn normalized(&self, pid: Pid) -> f32 {
-        self.params.normalized(pid)
-    }
-    fn begin(&mut self, pid: Pid) {
-        unsafe { self.context.raw_begin_set_parameter(self.params.ptr(pid)) }
-    }
-    fn set(&mut self, pid: Pid, normalized: f32) {
-        unsafe { self.context.raw_set_parameter_normalized(self.params.ptr(pid), normalized) }
-    }
-    fn end(&mut self, pid: Pid) {
-        unsafe { self.context.raw_end_set_parameter(self.params.ptr(pid)) }
-    }
 }
 
 impl Handler {
@@ -162,7 +146,7 @@ impl Handler {
             Some(kind) => {
                 self.ready |= kind == "ready";
                 let mut out = Vec::new();
-                let mut gui = Gui { context: &*self.context, params: &self.params };
+                let mut gui = ContextHost::new(&*self.context, &self.params);
                 self.bridge.handle(&msg, &mut gui, &mut out);
                 self.send(out);
             }
@@ -173,13 +157,15 @@ impl Handler {
 
 impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, _window: &mut Window) {
+        // Reactivating the plugin drops the context; take it back.
+        self.controls.keep_context(&self.context);
         while let Ok(msg) = self.inbox.try_recv() {
             self.handle(&msg);
         }
         if self.ready {
             let changed = self.changed.swap(false, Ordering::AcqRel);
             let mut out = Vec::new();
-            let gui = Gui { context: &*self.context, params: &self.params };
+            let gui = ContextHost::new(&*self.context, &self.params);
             self.bridge.poll(&gui, changed, &mut out);
             self.send(out);
         }

@@ -2,11 +2,13 @@
 //! tested and so a browser mock can be generated from it.
 
 use crate::layout::PAGES;
+use crate::controls::Controls;
 use crate::library::Library;
+use crate::minilab::KnobMode;
 use crate::macros::MACROS;
 use crate::params::{Kind, Pid, PlainValues, ThousandParams, Values, COUNT};
 use crate::presets::{Preset, Session, Source};
-use nih_plug::prelude::FloatRange;
+use nih_plug::prelude::{FloatRange, GuiContext};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -20,19 +22,66 @@ pub trait Host {
     fn end(&mut self, pid: Pid);
 }
 
+/// The host's GUI context: sets go to the host, which records them as
+/// automation and passes them back to the plugin.
+pub struct ContextHost<'a> {
+    context: &'a dyn GuiContext,
+    params: &'a ThousandParams,
+}
+
+impl<'a> ContextHost<'a> {
+    pub fn new(context: &'a dyn GuiContext, params: &'a ThousandParams) -> Self {
+        Self { context, params }
+    }
+}
+
+impl Host for ContextHost<'_> {
+    fn normalized(&self, pid: Pid) -> f32 {
+        self.params.normalized(pid)
+    }
+    fn begin(&mut self, pid: Pid) {
+        unsafe { self.context.raw_begin_set_parameter(self.params.ptr(pid)) }
+    }
+    fn set(&mut self, pid: Pid, normalized: f32) {
+        unsafe { self.context.raw_set_parameter_normalized(self.params.ptr(pid), normalized) }
+    }
+    fn end(&mut self, pid: Pid) {
+        unsafe { self.context.raw_end_set_parameter(self.params.ptr(pid)) }
+    }
+}
+
+/// Applies the preset under `key` and makes it the session.
+pub fn load_preset(params: &ThousandParams, library: &Library, key: &str, host: &mut impl Host) -> bool {
+    let Some((preset, source)) = library.get(key) else {
+        return false;
+    };
+    apply(host, &preset.values());
+    params.set_session(Session::from_preset(preset, source));
+    true
+}
+
 pub struct Bridge {
     params: Arc<ThousandParams>,
-    library: Library,
+    controls: Arc<Controls>,
     sent: [f32; COUNT],
     sent_session: Value,
+    sent_page: usize,
     seen_generation: u32,
     /// The edit, put aside while compare shows the saved preset.
     stashed: Option<PlainValues>,
 }
 
 impl Bridge {
-    pub fn new(params: Arc<ThousandParams>, library: Library) -> Self {
-        Self { params, library, sent: [f32::NAN; COUNT], sent_session: Value::Null, seen_generation: u32::MAX, stashed: None }
+    pub fn new(params: Arc<ThousandParams>, controls: Arc<Controls>) -> Self {
+        Self {
+            params,
+            controls,
+            sent: [f32::NAN; COUNT],
+            sent_session: Value::Null,
+            sent_page: usize::MAX,
+            seen_generation: u32::MAX,
+            stashed: None,
+        }
     }
 
     pub fn handle(&mut self, msg: &Value, host: &mut impl Host, out: &mut Vec<Value>) {
@@ -42,8 +91,20 @@ impl Bridge {
             ("ready", _) => {
                 self.sent = [f32::NAN; COUNT];
                 self.sent_session = Value::Null;
+                self.sent_page = usize::MAX;
                 out.push(json!({ "type": "init", "params": describe_params(), "pages": describe_pages() }));
                 out.push(self.presets_message());
+                out.push(self.settings_message());
+            }
+            ("page", _) => self.controls.set_page(msg["index"].as_u64().unwrap_or(0) as usize),
+            ("order", _) => {
+                let keys = msg["keys"].as_array().map(|k| k.iter().filter_map(|k| k.as_str().map(String::from)).collect());
+                self.controls.set_order(keys.unwrap_or_default());
+            }
+            ("knobMode", _) => {
+                let mode = KnobMode::from_u8(msg["mode"].as_u64().unwrap_or(1) as u8);
+                self.controls.set_knob_mode(mode);
+                out.push(self.settings_message());
             }
             ("begin", Some(pid)) => host.begin(pid),
             ("set", Some(pid)) => {
@@ -56,25 +117,25 @@ impl Bridge {
             }
             ("end", Some(pid)) => host.end(pid),
             ("load", _) => {
-                if let Some((preset, source)) = self.library.get(key) {
-                    let preset = preset.clone();
-                    apply(host, &preset.values());
+                if load_preset(&self.params, &self.controls.library(), key, host) {
                     self.stashed = None;
-                    self.params.set_session(Session::from_preset(&preset, source));
                 }
             }
             ("save", _) => self.save(msg, host, out),
             ("delete", _) => {
                 let session = self.params.session();
-                if self.library.delete(key).is_ok() {
-                    if self.library.key_of(&session).is_none() && session.source == Source::User {
+                let deleted = self.controls.library().delete(key).is_ok();
+                if deleted {
+                    if self.controls.library().key_of(&session).is_none() && session.source == Source::User {
                         self.params.set_session(Session { source: Source::New, saved: None, ..session });
                     }
                     out.push(self.presets_message());
                 }
             }
             ("favorite", _) => {
-                if self.library.set_favorite(key, msg["on"].as_bool().unwrap_or(false)).is_ok() {
+                let on = msg["on"].as_bool().unwrap_or(false);
+                let saved = self.controls.library().set_favorite(key, on).is_ok();
+                if saved {
                     out.push(self.presets_message());
                 }
             }
@@ -101,8 +162,18 @@ impl Bridge {
                 out.push(json!({ "type": "values", "values": changes }));
             }
         }
+        let page = self.controls.page();
+        if page != self.sent_page {
+            self.sent_page = page;
+            out.push(json!({ "type": "page", "index": page }));
+        }
         let generation = self.params.session_generation();
         if values_changed || generation != self.seen_generation {
+            if generation != self.seen_generation && self.seen_generation != u32::MAX {
+                // Another preset arrived (a pad, a project load): the stashed
+                // edit belonged to the old one.
+                self.stashed = None;
+            }
             self.seen_generation = generation;
             let session = self.session_message(host);
             if session != self.sent_session {
@@ -129,7 +200,8 @@ impl Bridge {
         let mut preset = Preset::capture(name, category.trim(), &values, &session.macros);
         preset.author = "user".into();
         preset.tags = session.saved.map(|p| p.tags).unwrap_or_default();
-        match self.library.save(&preset) {
+        let saved = self.controls.library().save(&preset);
+        match saved {
             Ok(_) => {
                 self.params.set_session(Session::from_preset(&preset, Source::User));
                 out.push(self.presets_message());
@@ -154,7 +226,11 @@ impl Bridge {
     }
 
     fn presets_message(&self) -> Value {
-        json!({ "type": "presets", "presets": self.library.listing() })
+        json!({ "type": "presets", "presets": self.controls.library().listing() })
+    }
+
+    fn settings_message(&self) -> Value {
+        json!({ "type": "settings", "knobMode": self.controls.knob_mode() as u8 })
     }
 
     fn session_message(&self, host: &impl Host) -> Value {
@@ -176,7 +252,7 @@ impl Bridge {
             "name": session.name,
             "category": session.category,
             "source": source,
-            "key": self.library.key_of(&session),
+            "key": self.controls.library().key_of(&session),
             "dirty": dirty,
             "comparing": comparing,
             "macros": macros,
@@ -285,7 +361,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("1000-synths-bridge-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let library = Library::at(root.join("User"), root.join("state.json"));
-        (root, Bridge::new(Arc::new(ThousandParams::default()), library), FakeHost::new())
+        (root, Bridge::new(Arc::new(ThousandParams::default()), Arc::new(Controls::new(library))), FakeHost::new())
     }
 
     fn send(bridge: &mut Bridge, host: &mut FakeHost, msg: Value) -> Vec<Value> {
@@ -307,9 +383,9 @@ mod tests {
         let (root, mut bridge, mut host) = setup("ready");
         let out = send(&mut bridge, &mut host, json!({ "type": "ready" }));
         let types: Vec<_> = out.iter().map(|m| m["type"].as_str().unwrap()).collect();
-        assert_eq!(types, ["init", "presets", "values", "session"]);
+        assert_eq!(types, ["init", "presets", "settings", "values", "page", "session"]);
         assert_eq!(out[0]["params"].as_array().unwrap().len(), COUNT);
-        assert_eq!(out[2]["values"].as_array().unwrap().len(), COUNT);
+        assert_eq!(out[3]["values"].as_array().unwrap().len(), COUNT);
         let _ = std::fs::remove_dir_all(root);
     }
 
@@ -376,6 +452,33 @@ mod tests {
         let out = send(&mut bridge, &mut host, json!({ "type": "delete", "key": "user/My Pad" }));
         assert_eq!(session(&out)["source"], "new");
         assert_eq!(session(&out)["dirty"], true);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn pages_sync_both_ways() {
+        let (root, mut bridge, mut host) = setup("pages");
+        send(&mut bridge, &mut host, json!({ "type": "ready" }));
+        let out = send(&mut bridge, &mut host, json!({ "type": "page", "index": 3 }));
+        assert!(out.iter().any(|m| m == &json!({ "type": "page", "index": 3 })));
+        bridge.controls.midi_cc(20 + 1, 127);
+        let mut out = Vec::new();
+        bridge.poll(&host, false, &mut out);
+        assert_eq!(out, [json!({ "type": "page", "index": 1 })]);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_new_preset_from_elsewhere_ends_compare() {
+        let (root, mut bridge, mut host) = setup("pad-load");
+        send(&mut bridge, &mut host, json!({ "type": "load", "key": factory_key(0) }));
+        send(&mut bridge, &mut host, json!({ "type": "set", "id": "flt_res", "value": 0.95 }));
+        send(&mut bridge, &mut host, json!({ "type": "compare", "on": true }));
+        let library = bridge.controls.library().keys();
+        load_preset(&bridge.params, &bridge.controls.library(), &library[4], &mut host);
+        let mut out = Vec::new();
+        bridge.poll(&host, true, &mut out);
+        assert_eq!(session(&out)["comparing"], false);
         let _ = std::fs::remove_dir_all(root);
     }
 

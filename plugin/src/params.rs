@@ -228,6 +228,12 @@ impl Spec {
         }
     }
 
+    /// Number of steps for stepped kinds; None for continuous ones.
+    pub fn steps(&self) -> Option<f32> {
+        let (min, max) = self.bounds();
+        (!matches!(self.kind, Kind::Float { .. })).then_some(max - min)
+    }
+
     pub fn clamp(&self, plain: f32) -> f32 {
         self.denormalize(self.normalize(plain))
     }
