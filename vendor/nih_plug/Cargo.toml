@@ -101,3 +101,6 @@ features = [
   "Win32_System_LibraryLoader",
   "Win32_System_Performance",
 ]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
