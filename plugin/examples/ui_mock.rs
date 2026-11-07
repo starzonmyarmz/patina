@@ -3,12 +3,17 @@
 
 use serde_json::json;
 use thousand_synths::bridge::{describe_pages, describe_params};
+use thousand_synths::library::Library;
 use thousand_synths::params::Pid;
 use thousand_synths::presets::factory;
 
 fn main() {
-    let presets: Vec<_> = factory()
-        .iter()
+    let empty = std::env::temp_dir().join("1000-synths-ui-mock");
+    let order = Library::at(empty.join("User"), empty.join("state.json")).keys();
+    let mut bank: Vec<_> = factory().iter().collect();
+    bank.sort_by_key(|p| order.iter().position(|k| *k == format!("factory/{}", p.name)));
+    let presets: Vec<_> = bank
+        .into_iter()
         .map(|p| {
             let values = p.values();
             let normalized: Vec<f32> = Pid::ALL.iter().map(|&pid| pid.spec().normalize(values.0[pid as usize])).collect();

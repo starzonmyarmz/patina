@@ -556,7 +556,6 @@
 
 <script>
   const CAP_COLORS = ["blue", "green", "white", "orange"];
-  const CATEGORY_ORDER = ["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
   const $ = (id) => document.getElementById(id);
 
   const params = new Map();
@@ -636,7 +635,7 @@
         showPage(pageIndex);
         return;
       case "presets":
-        presets = sortPresets(msg.presets);
+        presets = msg.presets;
         renderBrowser();
         return;
       case "values": {
@@ -862,20 +861,8 @@
 
   // ---------- browser ----------
 
-  function sortPresets(list) {
-    const rank = (c) => {
-      const i = CATEGORY_ORDER.indexOf(c);
-      return i < 0 ? CATEGORY_ORDER.length : i;
-    };
-    return [...list].sort((a, b) =>
-      rank(a.category) - rank(b.category)
-      || a.category.localeCompare(b.category)
-      || a.name.localeCompare(b.name, undefined, { numeric: true }));
-  }
-
   function categories() {
-    const seen = new Set(presets.map((p) => p.category));
-    return [...CATEGORY_ORDER.filter((c) => seen.has(c)), ...[...seen].filter((c) => !CATEGORY_ORDER.includes(c)).sort()];
+    return [...new Set(presets.map((p) => p.category))];
   }
 
   function visiblePresets() {

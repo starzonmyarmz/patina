@@ -21,6 +21,13 @@ struct State {
     favorites: BTreeSet<String>,
 }
 
+/// Browser order for the factory categories; others follow alphabetically.
+const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
+
+fn category_rank(category: &str) -> usize {
+    CATEGORY_ORDER.iter().position(|c| *c == category).unwrap_or(CATEGORY_ORDER.len())
+}
+
 impl Library {
     pub fn open() -> Self {
         let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
@@ -50,6 +57,20 @@ impl Library {
         factory.chain(user)
     }
 
+    /// Every preset in browser order: by category, then name.
+    fn sorted(&self) -> Vec<(String, &Preset, Source)> {
+        let mut all: Vec<_> = self.entries().collect();
+        all.sort_by_cached_key(|(_, p, source)| {
+            (category_rank(&p.category), p.category.clone(), p.name.to_lowercase(), *source == Source::User)
+        });
+        all
+    }
+
+    /// Keys in browser order.
+    pub fn keys(&self) -> Vec<String> {
+        self.sorted().into_iter().map(|(key, ..)| key).collect()
+    }
+
     pub fn get(&self, key: &str) -> Option<(&Preset, Source)> {
         self.entries().find(|(k, ..)| k == key).map(|(_, p, s)| (p, s))
     }
@@ -65,7 +86,8 @@ impl Library {
     }
 
     pub fn listing(&self) -> Vec<Value> {
-        self.entries()
+        self.sorted()
+            .into_iter()
             .map(|(key, p, source)| {
                 json!({
                     "favorite": self.state.favorites.contains(&key),
@@ -157,6 +179,16 @@ mod tests {
         assert!(lib.get(&key).is_none());
         assert!(lib.key_of(&session).is_none());
         assert!(!lib.state.favorites.contains(&key));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn lists_in_category_order() {
+        let (root, lib) = temp_library("order");
+        let categories: Vec<_> = lib.listing().iter().map(|e| e["category"].as_str().unwrap().to_string()).collect();
+        let ranks: Vec<_> = categories.iter().map(|c| category_rank(c)).collect();
+        assert!(ranks.windows(2).all(|w| w[0] <= w[1]));
+        assert_eq!(lib.keys().len(), categories.len());
         let _ = std::fs::remove_dir_all(root);
     }
 
