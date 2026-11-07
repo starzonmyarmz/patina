@@ -463,6 +463,13 @@
 
     & .note { color: var(--muted); min-height: 1.3em; margin: 0; }
 
+    & .devices {
+      display: grid;
+      gap: 12px;
+      padding-block-end: 12px;
+      border-block-end: 1px solid var(--panel-deep);
+    }
+
     & .buttons {
       display: flex;
       justify-content: end;
@@ -551,6 +558,12 @@
 
   <dialog id="setup-dialog" aria-labelledby="setup-title">
     <form method="dialog">
+      <div class="devices" id="devices" hidden>
+        <h2>Devices</h2>
+        <label>Audio output <select id="audio-output"></select></label>
+        <label>MIDI input <select id="midi-input"></select></label>
+        <p class="note" id="devices-note"></p>
+      </div>
       <h2 id="setup-title">MiniLab MK2</h2>
       <label>Knob mode <select id="knob-mode">
         <option value="1">Relative #1 (64 = still)</option>
@@ -560,7 +573,7 @@
       <p class="note">Match the encoder mode set in MIDI Control Center. Knobs send CC 102–117 and follow the page on screen. Bank 1 pads send CC 20–27: six pages, then previous and next preset.</p>
       <p class="note">In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
       <div class="buttons">
-        <button class="key" type="submit">done</button>
+        <button class="key" type="submit" id="setup-done">done</button>
       </div>
     </form>
   </dialog>
@@ -582,6 +595,7 @@
   const filter = { category: "all", query: "" };
   let selectedKey = null;
   let auditioning = false;
+  let devices = null;
 
   const bridge = window.ipc
     ? (msg) => window.ipc.postMessage(JSON.stringify(msg))
@@ -686,6 +700,10 @@
         return;
       case "error":
         showToast(msg.message);
+        return;
+      case "devices":
+        devices = msg;
+        renderDevices();
         return;
     }
   };
@@ -1132,7 +1150,46 @@
   }
 
   $("save").addEventListener("click", openSave);
-  $("setup").addEventListener("click", () => $("setup-dialog").showModal());
+  $("setup").addEventListener("click", () => {
+    if (devices) bridge({ type: "devices" });
+    $("setup-dialog").showModal();
+  });
+
+  function deviceOptions(select, names, current, empty) {
+    if (names.length === 0) {
+      select.replaceChildren(new Option(empty, ""));
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    select.replaceChildren(...names.map((n) => new Option(n, n, false, n === current)));
+  }
+
+  function renderDevices() {
+    $("devices").hidden = false;
+    deviceOptions($("audio-output"), devices.outputs, devices.output, "No audio outputs");
+    deviceOptions($("midi-input"), devices.midiInputs, devices.midiInput, "No MIDI inputs. Plug one in and reopen this.");
+    updateDevicesNote();
+  }
+
+  function devicesChanged() {
+    if (!devices) return false;
+    const output = $("audio-output").value || null;
+    const midi = $("midi-input").value || null;
+    return output !== devices.output || midi !== devices.midiInput;
+  }
+
+  function updateDevicesNote() {
+    const changed = devicesChanged();
+    $("devices-note").textContent = changed ? "Patina restarts to switch devices." : "";
+    $("setup-done").textContent = changed ? "restart" : "done";
+  }
+
+  $("audio-output").addEventListener("change", updateDevicesNote);
+  $("midi-input").addEventListener("change", updateDevicesNote);
+  document.querySelector("#setup-dialog form").addEventListener("submit", () => {
+    if (devicesChanged()) bridge({ type: "switchDevices", output: $("audio-output").value || null, midiInput: $("midi-input").value || null });
+  });
   $("knob-mode").addEventListener("change", (e) => bridge({ type: "knobMode", mode: Number(e.target.value) }));
   $("save-name").addEventListener("input", updateSaveNote);
   $("save-cancel").addEventListener("click", () => $("save-dialog").close());
@@ -1166,6 +1223,7 @@
       else if (!$("browser").hidden) closeBrowser();
       return;
     }
+    if (devices && e.metaKey && (e.key === "q" || e.key === "w")) return bridge({ type: "quit" });
     if (typing || e.metaKey || e.ctrlKey) return;
     if (e.key === "A" && e.shiftKey) return bridge({ type: "audition", on: !auditioning });
     const action = auditioning && AUDITION_KEYS.find(([, shortcut]) => shortcut === e.key);

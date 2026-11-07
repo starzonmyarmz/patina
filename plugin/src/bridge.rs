@@ -102,6 +102,21 @@ impl Bridge {
                 out.push(json!({ "type": "init", "params": describe_params(), "pages": describe_pages() }));
                 out.push(self.presets_message());
                 out.push(self.settings_message());
+                out.extend(devices_message());
+            }
+            ("devices", _) => out.extend(devices_message()),
+            ("switchDevices", _) => {
+                if let Some(app) = crate::app::get() {
+                    crate::app::save(&self.params, host);
+                    let name = |key: &str| msg[key].as_str().map(String::from);
+                    (app.relaunch)(name("output"), name("midiInput"));
+                }
+            }
+            ("quit", _) => {
+                if crate::app::get().is_some() {
+                    crate::app::save(&self.params, host);
+                    std::process::exit(0);
+                }
             }
             ("page", _) => self.controls.set_page(msg["index"].as_u64().unwrap_or(0) as usize),
             ("order", _) => {
@@ -299,8 +314,19 @@ pub fn current(host: &impl Host) -> PlainValues {
     }))
 }
 
+fn devices_message() -> Option<Value> {
+    let d = (crate::app::get()?.devices)();
+    Some(json!({
+        "type": "devices",
+        "outputs": d.outputs,
+        "midiInputs": d.midi_inputs,
+        "output": d.output,
+        "midiInput": d.midi_input,
+    }))
+}
+
 /// Sets every parameter that differs, each as its own gesture.
-fn apply(host: &mut impl Host, values: &impl Values) {
+pub fn apply(host: &mut impl Host, values: &impl Values) {
     for &pid in Pid::ALL {
         let target = pid.spec().normalize(values.get(pid));
         if (host.normalized(pid) - target).abs() > 1e-6 {

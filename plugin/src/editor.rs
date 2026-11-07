@@ -10,6 +10,7 @@ use std::any::Any;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use wry::{WebView, WebViewBuilder};
 
 const SIZE: (u32, u32) = (960, 540);
@@ -79,6 +80,8 @@ impl Editor for WebEditor {
                 bridge,
                 ready: false,
                 page_has_focus: false,
+                unsaved_since: None,
+                seen_session: u32::MAX,
             }
         });
         Box::new(Open(handle))
@@ -117,6 +120,9 @@ struct Handler {
     ready: bool,
     /// Something on the page (a knob, the search box) has keyboard focus.
     page_has_focus: bool,
+    /// In the app: when the sound last changed without being saved.
+    unsaved_since: Option<Instant>,
+    seen_session: u32,
 }
 
 impl Handler {
@@ -172,6 +178,33 @@ impl Handler {
     }
 }
 
+impl Handler {
+    /// In the app, saves the sound a second after it stops changing, so the
+    /// next launch starts where this one left off.
+    fn autosave(&mut self, changed: bool) {
+        if crate::app::get().is_none() {
+            return;
+        }
+        let session = self.params.session_generation();
+        if changed || session != self.seen_session {
+            self.seen_session = session;
+            self.unsaved_since = Some(Instant::now());
+        }
+        if self.unsaved_since.is_some_and(|t| t.elapsed() > Duration::from_secs(1)) {
+            self.unsaved_since = None;
+            crate::app::save(&self.params, &ContextHost::new(&*self.context, &self.params));
+        }
+    }
+}
+
+impl Drop for Handler {
+    fn drop(&mut self) {
+        if crate::app::get().is_some() && self.ready {
+            crate::app::save(&self.params, &ContextHost::new(&*self.context, &self.params));
+        }
+    }
+}
+
 impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, window: &mut Window) {
         self.build_webview(window);
@@ -184,6 +217,7 @@ impl baseview::WindowHandler for Handler {
             let gui = ContextHost::new(&*self.context, &self.params);
             self.bridge.poll(&gui, changed, &mut out);
             self.send(out);
+            self.autosave(changed);
         }
     }
 

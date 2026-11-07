@@ -1,6 +1,6 @@
 # Patina
 
-A polysynth plugin (VST3 + CLAP) in Rust, built with
+A polysynth plugin (VST3 + CLAP) and Mac app in Rust, built with
 [nih-plug](https://github.com/robbert-vdh/nih-plug), patched in `vendor/` (see
 [vendor/README.md](vendor/README.md)). See [SPEC.md](SPEC.md) for the design
 and build order.
@@ -15,6 +15,20 @@ Builds release bundles and copies them, ad-hoc signed, to
 `~/Library/Audio/Plug-Ins/VST3` and `~/Library/Audio/Plug-Ins/CLAP`. In
 REAPER, rescan plugins (**Preferences → Plug-ins → VST/CLAP → Re-scan**) and
 add **Patina** to a track. Prefer the CLAP version.
+
+It also builds `/Applications/Patina.app`, the same synth without a DAW.
+
+## The app
+
+The app plays through CoreAudio and takes MIDI from the MiniLab when it's
+connected (otherwise the first MIDI input). **midi** lists the audio
+outputs and MIDI inputs; choosing others restarts the app with them. A
+device plugged in after launch shows up the next time the dialog opens.
+
+It reopens with the sound you left: the preset, your edits and the
+unsaved-changes dot. The transport always runs at 120 BPM, so synced LFOs,
+delays and audition phrases use that. Quit with Cmd Q or by closing the
+window.
 
 ## Using it
 
@@ -109,4 +123,6 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |
 | `presetgen/` | Factory bank generator and quality gate. |
+| `app/` | The Mac app: device choice, then nih-plug's standalone wrapper. |
+| `plugin/src/app.rs` | What the editor needs from the app: device lists, relaunch, saving the sound. |
 | `vendor/nih_plug/` | nih-plug with fixes for state loading and setting parameters without an editor. |

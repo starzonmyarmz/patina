@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["plugin", "presetgen", "xtask"]
+members = ["app", "plugin", "presetgen", "xtask"]
 exclude = ["vendor"]
 
 [profile.release]
@@ -14,3 +14,12 @@ strip = "none"
 
 [patch."https://github.com/robbert-vdh/nih-plug"]
 nih_plug = { path = "vendor/nih_plug" }
+
+# Old objc-based crates message nil, which Objective-C allows but Rust's
+# debug-build null checks turn into aborts.
+[profile.dev.package.objc]
+debug-assertions = false
+[profile.dev.package.baseview]
+debug-assertions = false
+[profile.dev.package.wry]
+debug-assertions = false

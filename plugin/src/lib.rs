@@ -1,3 +1,4 @@
+pub mod app;
 pub mod audition;
 pub mod bridge;
 pub mod controls;
@@ -28,6 +29,7 @@ pub struct Patina {
     player: Player,
     phrase_events: Events,
     phrase_seen: u32,
+    restored: bool,
 }
 
 impl Default for Patina {
@@ -41,6 +43,7 @@ impl Default for Patina {
             player: Player::default(),
             phrase_events: Events::default(),
             phrase_seen: u32::MAX,
+            restored: false,
         }
     }
 }
@@ -143,6 +146,10 @@ impl Plugin for Patina {
         context: &mut impl InitContext<Self>,
     ) -> bool {
         self.controls.keep_context(|| context.gui_context());
+        if app::get().is_some() && !std::mem::replace(&mut self.restored, true) {
+            let gui = context.gui_context();
+            app::restore(&self.params, &mut bridge::ContextHost::new(&*gui, &self.params));
+        }
         if self.engine.sample_rate() != buffer_config.sample_rate {
             self.engine = Engine::new(buffer_config.sample_rate);
         }

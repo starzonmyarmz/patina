@@ -28,7 +28,7 @@ struct State {
 /// Browser order for the factory categories; others follow alphabetically.
 pub const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
 
-fn support_dir() -> PathBuf {
+pub fn support_dir() -> PathBuf {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     home.join("Library/Application Support/Patina")
 }
