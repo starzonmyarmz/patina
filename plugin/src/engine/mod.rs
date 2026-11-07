@@ -1,5 +1,6 @@
 pub mod env;
 pub mod filter;
+pub mod fx;
 pub mod lfo;
 pub mod osc;
 mod voice;
@@ -7,6 +8,7 @@ mod voice;
 use crate::params::{Pid, Values, DIVISION_BEATS};
 use env::EnvCoeffs;
 use filter::fast_tanh;
+use fx::{Fx, FxPatch};
 use lfo::Lfo;
 use osc::Tables;
 use std::f32::consts::TAU;
@@ -181,6 +183,8 @@ pub struct Engine {
     tables: Tables,
     voices: Vec<Voice>,
     patch: Patch,
+    fx: Fx,
+    fx_patch: FxPatch,
     lfos: [Lfo; 3],
     lfo_inc: [f32; 3],
     vibrato_phase: f32,
@@ -202,6 +206,8 @@ impl Engine {
             tables: Tables::new(sr),
             voices: (0..MAX_VOICES).map(|i| Voice::new(0x9E37_79B9 ^ (i as u32 + 1).wrapping_mul(0x85EB_CA6B))).collect(),
             patch: Patch::default(),
+            fx: Fx::new(sr),
+            fx_patch: FxPatch::default(),
             lfos: [Lfo::new(11), Lfo::new(23), Lfo::new(37)],
             lfo_inc: [0.0; 3],
             vibrato_phase: 0.0,
@@ -219,6 +225,7 @@ impl Engine {
     pub fn reset(&mut self) {
         self.voices.iter_mut().for_each(Voice::kill);
         self.lfos.iter_mut().for_each(Lfo::reset);
+        self.fx.reset();
         self.dc = [(0.0, 0.0); 2];
         self.sustain = false;
         self.bend = 0.0;
@@ -238,6 +245,7 @@ impl Engine {
         let poly = self.patch.poly;
         self.voices[poly..].iter_mut().filter(|v| v.active).for_each(Voice::kill);
         let tempo = transport.tempo.unwrap_or(120.0) as f32;
+        self.fx_patch = FxPatch::read(params, self.sr, tempo);
         for i in 0..3 {
             let hz = match self.patch.lfo_sync[i] {
                 Some(beats) => tempo / 60.0 / beats,
@@ -344,7 +352,7 @@ impl Engine {
                 sl += vl;
                 sr += vr;
             }
-            let (mut xl, mut xr) = (sl * 0.35, sr * 0.35);
+            let (mut xl, mut xr) = self.fx.tick(sl * 0.35, sr * 0.35, &self.fx_patch);
 
             if p.limiter {
                 xl = fast_tanh(xl);

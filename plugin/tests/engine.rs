@@ -72,7 +72,7 @@ fn heavy_patch_stays_finite() {
 #[test]
 fn released_notes_fall_silent() {
     let mut v = PlainValues::default();
-    v.set(Pid::AmpRelease, 50.0);
+    v.set(Pid::AmpRelease, 50.0).set(Pid::ReverbMix, 0.0);
     let (mut e, _, _) = play(&v, &[60, 64], 0.2);
     e.note_off(60);
     e.note_off(64);
@@ -127,6 +127,93 @@ fn synced_lfo_follows_tempo() {
     assert!(window(0.30) > 10.0 * window(0.05), "open {} closed {}", window(0.30), window(0.05));
 }
 
+fn transport(tempo: f64) -> Transport {
+    Transport { playing: false, tempo: Some(tempo), pos_beats: None }
+}
+
+/// Plays a 20 ms blip and returns the left channel's peak in 10 ms windows.
+fn blip_envelope(v: &PlainValues, tempo: f64, seconds: f32) -> Vec<f32> {
+    let mut e = Engine::new(SR);
+    e.update(v, transport(tempo));
+    e.note_on(60, 1.0);
+    let n = (SR * seconds) as usize;
+    let (mut l, mut r) = (vec![0.0; n], vec![0.0; n]);
+    let off = (SR * 0.02) as usize;
+    let mut pos = 0;
+    while pos < n {
+        if pos == off {
+            e.note_off(60);
+        }
+        let end = (pos + CHUNK).min(n).min(if pos < off { off } else { n });
+        e.update(v, transport(tempo));
+        e.render(&mut l[pos..end], &mut r[pos..end]);
+        pos = end;
+    }
+    l.chunks(480).map(peak).collect()
+}
+
+fn dry_blip() -> PlainValues {
+    let mut v = PlainValues::default();
+    v.set(Pid::AmpAttack, 0.0)
+        .set(Pid::AmpRelease, 5.0)
+        .set(Pid::ReverbMix, 0.0)
+        .set(Pid::DelayMix, 100.0)
+        .set(Pid::DelayFeedback, 0.0);
+    v
+}
+
+fn loudest_window_after(env: &[f32], skip: usize) -> usize {
+    env.iter().enumerate().skip(skip).max_by(|a, b| a.1.total_cmp(b.1)).unwrap().0
+}
+
+#[test]
+fn delay_echoes_at_its_time() {
+    let mut v = dry_blip();
+    v.set(Pid::DelayTime, 300.0);
+    let env = blip_envelope(&v, 120.0, 0.6);
+    assert_eq!(loudest_window_after(&env, 5), 30, "{env:?}");
+}
+
+#[test]
+fn synced_delay_follows_tempo() {
+    let mut v = dry_blip();
+    v.set(Pid::DelaySync, 1.0).set(Pid::DelayDivision, 9.0);
+    // A quarter note at 150 BPM is 400 ms.
+    let env = blip_envelope(&v, 150.0, 0.6);
+    assert_eq!(loudest_window_after(&env, 5), 40, "{env:?}");
+}
+
+#[test]
+fn reverb_tail_outlasts_the_note() {
+    let mut v = PlainValues::default();
+    v.set(Pid::AmpAttack, 0.0).set(Pid::AmpRelease, 5.0).set(Pid::ReverbMix, 60.0).set(Pid::ReverbSize, 90.0);
+    let env = blip_envelope(&v, 120.0, 1.0);
+    assert!(env[50] > 1e-3, "tail at 500 ms: {}", env[50]);
+}
+
+#[test]
+fn every_effect_at_full_stays_bounded() {
+    let mut v = PlainValues::default();
+    v.set(Pid::Distortion, 100.0)
+        .set(Pid::Bitcrush, 100.0)
+        .set(Pid::ChorusMix, 100.0)
+        .set(Pid::ChorusRate, 100.0)
+        .set(Pid::DelayMix, 100.0)
+        .set(Pid::DelayFeedback, 90.0)
+        .set(Pid::DelayTime, 10.0)
+        .set(Pid::ReverbMix, 100.0)
+        .set(Pid::ReverbSize, 100.0)
+        .set(Pid::EqLow, 12.0)
+        .set(Pid::EqMid, 12.0)
+        .set(Pid::EqHigh, 12.0)
+        .set(Pid::Compressor, 100.0)
+        .set(Pid::Width, 200.0);
+    let (_, l, r) = play(&v, &[36, 48, 60, 72], 3.0);
+    assert!(l.iter().chain(&r).all(|x| x.is_finite()));
+    assert!(peak(&l).max(peak(&r)) <= 1.0);
+    assert!(peak(&l[l.len() - 4800..]) > 1e-3);
+}
+
 /// cargo test --release -p thousand_synths --test engine -- --ignored --nocapture
 #[test]
 #[ignore]
@@ -139,7 +226,11 @@ fn cpu_budget_for_a_dense_pad() {
         .set(Pid::SubLevel, 30.0)
         .set(Pid::PinkLevel, 10.0)
         .set(Pid::Lfo1Filter, 30.0)
-        .set(Pid::AmpAttack, 500.0);
+        .set(Pid::AmpAttack, 500.0)
+        .set(Pid::ChorusMix, 30.0)
+        .set(Pid::DelayMix, 25.0)
+        .set(Pid::ReverbMix, 30.0)
+        .set(Pid::EqLow, 3.0);
     let notes: Vec<u8> = (0..16).map(|i| 40 + i * 3).collect();
     let mut e = Engine::new(SR);
     e.update(&v, Transport::default());
@@ -148,6 +239,6 @@ fn cpu_budget_for_a_dense_pad() {
     let started = Instant::now();
     render(&mut e, &v, seconds);
     let cpu = started.elapsed().as_secs_f32() / seconds * 100.0;
-    println!("16 voices x 8 unison x 2 osc, ladder: {cpu:.2}% of one core");
+    println!("16 voices x 8 unison x 2 osc, ladder, chorus/delay/reverb/EQ: {cpu:.2}% of one core");
     assert_eq!(e.active_voices(), 16);
 }
