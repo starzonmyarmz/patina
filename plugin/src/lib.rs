@@ -148,7 +148,8 @@ impl Plugin for Patina {
         self.controls.keep_context(|| context.gui_context());
         if app::get().is_some() && !std::mem::replace(&mut self.restored, true) {
             let gui = context.gui_context();
-            app::restore(&self.params, &mut bridge::ContextHost::new(&*gui, &self.params));
+            let tempo = app::restore(&self.params, &mut bridge::ContextHost::new(&*gui, &self.params));
+            self.controls.set_app_tempo(tempo.unwrap_or(controls::DEFAULT_TEMPO));
         }
         if self.engine.sample_rate() != buffer_config.sample_rate {
             self.engine = Engine::new(buffer_config.sample_rate);
@@ -170,7 +171,12 @@ impl Plugin for Patina {
             self.engine.set_macros(matrix);
         }
         let t = context.transport();
-        let transport = Transport { playing: t.playing, tempo: t.tempo, pos_beats: t.pos_beats() };
+        let transport = match self.controls.app_tempo() {
+            // The app's transport is stopped at its own tempo: synced rates
+            // follow it, phases run free.
+            Some(bpm) => Transport { playing: false, tempo: Some(bpm as f64), pos_beats: None },
+            None => Transport { playing: t.playing, tempo: t.tempo, pos_beats: t.pos_beats() },
+        };
         self.engine.update(&*self.params, transport);
         self.engine.follow_transport(transport);
 
@@ -178,7 +184,7 @@ impl Plugin for Patina {
         let [left, right] = buffer.as_slice() else {
             return ProcessStatus::Normal;
         };
-        self.audition(len, t.tempo);
+        self.audition(len, transport.tempo);
         let mut phrase = 0;
         let mut event = context.next_event();
         let mut pos = 0;

@@ -39,16 +39,18 @@ pub fn get() -> Option<&'static App> {
 struct Snapshot {
     session: Session,
     current: Preset,
+    #[serde(default)]
+    tempo: Option<f32>,
 }
 
 fn snapshot_path() -> PathBuf {
     crate::library::support_dir().join("app-state.json")
 }
 
-pub fn save(params: &ThousandParams, host: &impl Host) {
+pub fn save(params: &ThousandParams, tempo: Option<f32>, host: &impl Host) {
     let session = params.session();
     let current = Preset::capture(&session.name, &session.category, &current(host), &session.macros);
-    let Ok(json) = serde_json::to_string_pretty(&Snapshot { session, current }) else { return };
+    let Ok(json) = serde_json::to_string_pretty(&Snapshot { session, current, tempo }) else { return };
     let path = snapshot_path();
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
@@ -59,15 +61,15 @@ pub fn save(params: &ThousandParams, host: &impl Host) {
     }
 }
 
-/// Puts back the last saved sound. Returns false when there was none.
-pub fn restore(params: &ThousandParams, host: &mut impl Host) -> bool {
+/// Puts back the last saved sound and returns its tempo.
+pub fn restore(params: &ThousandParams, host: &mut impl Host) -> Option<f32> {
     let Some(snapshot) = std::fs::read_to_string(snapshot_path())
         .ok()
         .and_then(|json| serde_json::from_str::<Snapshot>(&json).ok())
     else {
-        return false;
+        return None;
     };
     apply(host, &snapshot.current.values());
     params.set_session(snapshot.session);
-    true
+    snapshot.tempo
 }

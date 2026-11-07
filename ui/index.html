@@ -92,12 +92,25 @@
     align-items: center;
     gap: 16px;
 
+    & .start {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
     & .brand {
       font-weight: 700;
       text-transform: lowercase;
       letter-spacing: 0.12em;
 
       & span { color: var(--orange); }
+    }
+
+    & .tempo {
+      min-width: 9ch;
+      cursor: ns-resize;
+      touch-action: none;
+      font-variant-numeric: tabular-nums;
     }
 
     & .actions {
@@ -499,7 +512,10 @@
 <body>
 <div class="app">
   <header>
-    <div class="brand">patina<span>.</span></div>
+    <div class="start">
+      <div class="brand">patina<span>.</span></div>
+      <button class="key tempo" type="button" id="tempo" aria-label="Tempo" hidden></button>
+    </div>
     <div class="preset">
       <button class="key" type="button" id="prev" aria-label="Previous preset">‹</button>
       <button class="key name" type="button" id="preset-button" aria-haspopup="dialog">
@@ -600,6 +616,7 @@
   let selectedKey = null;
   let auditioning = false;
   let devices = null;
+  let tempo = null;
 
   const bridge = window.ipc
     ? (msg) => window.ipc.postMessage(JSON.stringify(msg))
@@ -704,6 +721,10 @@
         return;
       case "error":
         showToast(msg.message);
+        return;
+      case "tempo":
+        tempo = msg.bpm;
+        renderTempo();
         return;
       case "devices":
         devices = msg;
@@ -1159,6 +1180,46 @@
     $("setup-dialog").showModal();
   });
 
+  const TEMPO_MIN = 40;
+  const TEMPO_MAX = 240;
+
+  function renderTempo() {
+    const key = $("tempo");
+    key.hidden = tempo === null;
+    key.textContent = `${Math.round(tempo)} bpm`;
+  }
+
+  function setTempo(bpm) {
+    tempo = Math.min(TEMPO_MAX, Math.max(TEMPO_MIN, Math.round(bpm)));
+    bridge({ type: "tempo", bpm: tempo });
+    renderTempo();
+  }
+
+  {
+    const key = $("tempo");
+    let drag = null;
+    key.addEventListener("pointerdown", (e) => {
+      key.setPointerCapture(e.pointerId);
+      drag = { y: e.clientY, from: tempo };
+    });
+    key.addEventListener("pointermove", (e) => {
+      if (drag) setTempo(drag.from + (drag.y - e.clientY) / (e.shiftKey ? 8 : 2));
+    });
+    key.addEventListener("pointerup", () => (drag = null));
+    key.addEventListener("dblclick", () => setTempo(120));
+    key.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      setTempo(tempo - Math.sign(e.deltaY));
+    }, { passive: false });
+    key.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 10 : 1;
+      if (e.key === "ArrowUp" || e.key === "ArrowRight") setTempo(tempo + step);
+      else if (e.key === "ArrowDown" || e.key === "ArrowLeft") setTempo(tempo - step);
+      else return;
+      e.preventDefault();
+    });
+  }
+
   function deviceOptions(select, names, current, empty) {
     if (names.length === 0) {
       select.replaceChildren(new Option(empty, ""));
@@ -1551,6 +1612,14 @@
     const state = { values: {}, presets: [], session: null, saved: null, stashed: null };
     let ready = null;
     const send = (msg) => setTimeout(() => window.onPluginMessage(msg));
+    const asApp = new URLSearchParams(location.search).has("app");
+    const mockDevices = {
+      type: "devices",
+      outputs: ["MacBook Pro Speakers", "External Headphones", "Scarlett 2i2 USB Audio Interface (Focusrite)"],
+      midiInputs: [],
+      output: "MacBook Pro Speakers",
+      midiInput: null,
+    };
     const text = (p, n) => {
       const v = plain(p, n);
       if (p.kind === "enum") return p.options[v];
@@ -1601,7 +1670,17 @@
             send({ type: "settings", knobMode: state.knobMode ?? 1 });
             sendValues(state.order);
             send({ type: "audition", on: Boolean(state.audition) });
+            if (asApp) {
+              send({ type: "tempo", bpm: state.tempo ?? 120 });
+              send(mockDevices);
+            }
             sendSession();
+            return;
+          case "tempo":
+            state.tempo = msg.bpm;
+            return;
+          case "devices":
+            if (asApp) send(mockDevices);
             return;
           case "audition":
             state.audition = msg.on;

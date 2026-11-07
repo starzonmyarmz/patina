@@ -69,6 +69,7 @@ pub struct Bridge {
     sent_page: usize,
     seen_generation: u32,
     sent_audition: Option<bool>,
+    sent_tempo: Option<f32>,
     seen_ratings: u32,
     /// The edit, put aside while compare shows the saved preset.
     stashed: Option<PlainValues>,
@@ -84,6 +85,7 @@ impl Bridge {
             sent_page: usize::MAX,
             seen_generation: u32::MAX,
             sent_audition: None,
+            sent_tempo: None,
             seen_ratings: 0,
             stashed: None,
         }
@@ -98,6 +100,7 @@ impl Bridge {
                 self.sent_session = Value::Null;
                 self.sent_page = usize::MAX;
                 self.sent_audition = None;
+                self.sent_tempo = None;
                 self.seen_ratings = self.controls.ratings_generation();
                 out.push(json!({ "type": "init", "params": describe_params(), "pages": describe_pages() }));
                 out.push(self.presets_message());
@@ -107,15 +110,20 @@ impl Bridge {
             ("devices", _) => out.extend(devices_message()),
             ("switchDevices", _) => {
                 if let Some(app) = crate::app::get() {
-                    crate::app::save(&self.params, host);
+                    crate::app::save(&self.params, self.controls.app_tempo(), host);
                     let name = |key: &str| msg[key].as_str().map(String::from);
                     (app.relaunch)(name("output"), name("midiInput"));
                 }
             }
             ("quit", _) => {
                 if crate::app::get().is_some() {
-                    crate::app::save(&self.params, host);
+                    crate::app::save(&self.params, self.controls.app_tempo(), host);
                     std::process::exit(0);
+                }
+            }
+            ("tempo", _) => {
+                if self.controls.app_tempo().is_some() {
+                    self.controls.set_app_tempo(msg["bpm"].as_f64().unwrap_or(120.0) as f32);
                 }
             }
             ("page", _) => self.controls.set_page(msg["index"].as_u64().unwrap_or(0) as usize),
@@ -201,6 +209,11 @@ impl Bridge {
             self.sent_audition = Some(audition);
             out.push(json!({ "type": "audition", "on": audition }));
         }
+        let tempo = self.controls.app_tempo();
+        if tempo.is_some() && tempo != self.sent_tempo {
+            self.sent_tempo = tempo;
+            out.push(json!({ "type": "tempo", "bpm": tempo }));
+        }
         let ratings = self.controls.ratings_generation();
         if ratings != self.seen_ratings {
             self.seen_ratings = ratings;
@@ -267,6 +280,10 @@ impl Bridge {
             (false, Some(edit), _) => apply(host, &edit),
             (_, stashed, _) => self.stashed = stashed,
         }
+    }
+
+    pub fn tempo(&self) -> Option<f32> {
+        self.controls.app_tempo()
     }
 
     fn presets_message(&self) -> Value {
@@ -468,6 +485,20 @@ mod tests {
         let out = send(&mut bridge, &mut host, json!({ "type": "rate", "verdict": null }));
         assert_eq!(session(&out)["rating"], Value::Null);
         assert_eq!(session(&out)["key"], first.as_str());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tempo_is_only_the_apps() {
+        let (root, mut bridge, mut host) = setup("tempo");
+        let out = send(&mut bridge, &mut host, json!({ "type": "ready" }));
+        assert!(!out.iter().any(|m| m["type"] == "tempo"));
+        send(&mut bridge, &mut host, json!({ "type": "tempo", "bpm": 90 }));
+        assert_eq!(bridge.tempo(), None);
+
+        bridge.controls.set_app_tempo(120.0);
+        let out = send(&mut bridge, &mut host, json!({ "type": "tempo", "bpm": 999 }));
+        assert!(out.contains(&json!({ "type": "tempo", "bpm": 240.0 })));
         let _ = std::fs::remove_dir_all(root);
     }
 

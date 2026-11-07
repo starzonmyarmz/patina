@@ -12,6 +12,9 @@ use nih_plug::prelude::GuiContext;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+pub const TEMPO_RANGE: (f32, f32) = (40.0, 240.0);
+pub const DEFAULT_TEMPO: f32 = 120.0;
+
 /// Encoder ticks to sweep a continuous parameter end to end.
 const TICKS_PER_SWEEP: f32 = 128.0;
 
@@ -34,6 +37,8 @@ pub struct Controls {
     rating_pad: AtomicU8,
     restart_phrase: AtomicBool,
     ratings_generation: AtomicU32,
+    /// The app's tempo as f32 bits; zero when the host sets the tempo.
+    app_tempo: AtomicU32,
 }
 
 impl Controls {
@@ -53,6 +58,7 @@ impl Controls {
             rating_pad: AtomicU8::new(0),
             restart_phrase: AtomicBool::new(false),
             ratings_generation: AtomicU32::new(0),
+            app_tempo: AtomicU32::new(0),
         }
     }
 
@@ -104,6 +110,15 @@ impl Controls {
     /// Changes whenever a rating changes.
     pub fn ratings_generation(&self) -> u32 {
         self.ratings_generation.load(Ordering::Acquire)
+    }
+
+    pub fn app_tempo(&self) -> Option<f32> {
+        Some(f32::from_bits(self.app_tempo.load(Ordering::Relaxed))).filter(|t| *t > 0.0)
+    }
+
+    pub fn set_app_tempo(&self, bpm: f32) {
+        let bpm = bpm.clamp(TEMPO_RANGE.0, TEMPO_RANGE.1);
+        self.app_tempo.store(bpm.to_bits(), Ordering::Relaxed);
     }
 
     pub fn keep_context(&self, context: impl FnOnce() -> Arc<dyn GuiContext>) {

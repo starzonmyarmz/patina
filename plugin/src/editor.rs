@@ -82,6 +82,7 @@ impl Editor for WebEditor {
                 page_has_focus: false,
                 unsaved_since: None,
                 seen_session: u32::MAX,
+                seen_tempo: None,
             }
         });
         Box::new(Open(handle))
@@ -123,6 +124,7 @@ struct Handler {
     /// In the app: when the sound last changed without being saved.
     unsaved_since: Option<Instant>,
     seen_session: u32,
+    seen_tempo: Option<f32>,
 }
 
 impl Handler {
@@ -186,13 +188,15 @@ impl Handler {
             return;
         }
         let session = self.params.session_generation();
-        if changed || session != self.seen_session {
+        let tempo = self.bridge.tempo();
+        if changed || session != self.seen_session || tempo != self.seen_tempo {
             self.seen_session = session;
+            self.seen_tempo = tempo;
             self.unsaved_since = Some(Instant::now());
         }
         if self.unsaved_since.is_some_and(|t| t.elapsed() > Duration::from_secs(1)) {
             self.unsaved_since = None;
-            crate::app::save(&self.params, &ContextHost::new(&*self.context, &self.params));
+            crate::app::save(&self.params, self.bridge.tempo(), &ContextHost::new(&*self.context, &self.params));
         }
     }
 }
@@ -200,7 +204,7 @@ impl Handler {
 impl Drop for Handler {
     fn drop(&mut self) {
         if crate::app::get().is_some() && self.ready {
-            crate::app::save(&self.params, &ContextHost::new(&*self.context, &self.params));
+            crate::app::save(&self.params, self.bridge.tempo(), &ContextHost::new(&*self.context, &self.params));
         }
     }
 }
