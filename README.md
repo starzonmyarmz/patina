@@ -45,6 +45,7 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/params.rs` | The parameter table: IDs, ranges, defaults, JSFX slider mapping. Single source of truth. |
 | `plugin/src/engine/` | DSP: band-limited oscillators, filters, envelopes, LFOs, voices. |
 | `plugin/src/lib.rs` | nih-plug wrapper: MIDI handling, sample-accurate event splitting. |
+| `plugin/src/layout.rs` | Which parameter sits under each of the 16 knobs on each page. |
 | `plugin/src/macros.rs` | Per-preset macro matrix. |
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |

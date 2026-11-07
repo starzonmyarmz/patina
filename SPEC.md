@@ -17,7 +17,7 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 | Macros | 8 per preset. Each preset defines what its macros are called and what they move. |
 | Editing | Factory presets are read-only. Saving an edit creates a user preset. A dot marks unsaved changes; "compare" toggles between the edit and the saved preset. |
 | Curation | Hidden audition mode: plays a test phrase per preset; pads rate keep / cut / tweak into a file the generator reads. |
-| Layout | Pages that mirror the MiniLab's 2×8 knobs: Osc, Filter, Env, LFO, FX, Macro. |
+| Layout | Pages that mirror the MiniLab's 2×8 knobs: Osc, Shape, Filter, Mod, FX, Macro. |
 | Hardware | Knobs in relative mode. Pad bank 1 = navigation, pad bank 2 = notes. |
 | UI | Native webview (WKWebView) with HTML/CSS. OP-1 light look. |
 | Repo | This repo. The JSFX repo stays as a frozen reference. |
@@ -64,20 +64,20 @@ listed twice.
 
 ### Pages
 
-Each page fills the 2×8 grid. Slots marked `—` are empty.
+Each page fills the 2×8 grid, in titled sections. Slots marked `—` are empty.
 
 | Page | Row 1 (knobs 1–8) | Row 2 (knobs 9–16) |
 |---|---|---|
-| Osc | osc1 type, semi, detune, level · osc2 type, semi, detune, level | FM, ring, unison voices, unison detune, spread, sub, noise, pink |
-| Shape | wavetable pos, PWM width, supersaw detune, glide · pitch env on, amount, attack, decay | velocity→filter, velocity→amp, aftertouch→filter, aftertouch→vibrato, keytrack, polyphony, volume, — |
-| Filter | type, cutoff, resonance, drive, env amount, vowel, —, — | filter env A, D, S, R · amp env A, D, S, R |
-| Mod | mod env A, D, S, R · LFO 1 rate, shape, →pitch, →filter | LFO 1 →amp, LFO 2 rate, shape, →pitch, →filter, LFO 3 rate, shape, →pan |
-| FX | distortion, bitcrush, chorus mix, chorus rate, delay time, feedback, mix, reverb size | reverb mix, EQ low, mid, high, compressor, width, limiter, LFO 3 →amp |
-| Macro | macros 1–8 | sync toggles and divisions for LFO 1–3 and delay |
+| Osc | Osc 1 type, semi, detune, level · Osc 2 type, semi, detune, level | FM, ring · unison voices, detune, spread · sub, noise, pink |
+| Shape | wavetable position, PWM width, supersaw spread · pitch env on, amount, attack, decay · — | velocity→amp, aftertouch→filter, aftertouch→vibrato · polyphony, glide, volume · —, — |
+| Filter | type, cutoff, resonance, drive, env amount, vowel · keytrack, velocity→filter | filter env A, D, S, R · amp env A, D, S, R |
+| Mod | LFO 1 rate, shape, →pitch, →filter, →amp · LFO 3 rate, shape, →pan | LFO 2 rate, shape, →pitch, →filter · FM env A, D, S, R |
+| FX | distortion, bitcrush · chorus mix, rate · delay time, feedback, mix · LFO 3 →amp (tremolo) | reverb size, mix · EQ low, mid, high · compressor, width, limiter |
+| Macro | macros 1–8 | sync and division for LFO 1, LFO 2, LFO 3, delay |
 
 The six page names fit pad bank 1 with two pads left for previous/next preset.
-The exact assignment is revisited once the UI exists; the parameter table, not
-this doc, is authoritative.
+`plugin/src/layout.rs` is authoritative; a test checks that every parameter is
+on exactly one page.
 
 ## Presets
 
