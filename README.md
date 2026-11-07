@@ -1,13 +1,35 @@
 # Patina
 
-A polysynth plugin (VST3 + CLAP) and Mac app in Rust, built with
-[nih-plug](https://github.com/robbert-vdh/nih-plug), patched in `vendor/` (see
-[vendor/README.md](vendor/README.md)). See [SPEC.md](SPEC.md) for the design
-and build order.
+A polysynth plugin (VST3 + CLAP) for macOS and Windows, and a Mac app, in
+Rust, built with [nih-plug](https://github.com/robbert-vdh/nih-plug), patched
+in `vendor/` (see [vendor/README.md](vendor/README.md)). See
+[SPEC.md](SPEC.md) for the design and build order.
 
 ![Patina’s editor showing the Acid Bass preset](docs/screenshot.jpg)
 
-## Install
+## Download
+
+Every push to `main` builds the plugins and publishes them as the
+[latest release](https://github.com/starzonmyarmz/patina/releases/tag/latest):
+VST3 and CLAP for macOS (Apple Silicon and Intel) and Windows. Unzip and copy
+them to your plugin folder:
+
+- **macOS**: `~/Library/Audio/Plug-Ins/VST3` and `~/Library/Audio/Plug-Ins/CLAP`
+- **Windows**: `C:\Program Files\Common Files\VST3` and `C:\Program Files\Common Files\CLAP`
+
+The builds aren’t signed or notarized, so macOS or Windows may flag them as
+unsafe. On macOS, if your DAW won’t load Patina, clear the quarantine flag and
+rescan:
+
+```sh
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Patina.vst3 ~/Library/Audio/Plug-Ins/CLAP/Patina.clap
+```
+
+On Windows, if SmartScreen or your antivirus blocks the download, choose to
+keep it, or right-click the zip, open **Properties** and check **Unblock**
+before unzipping.
+
+## Build and install on macOS
 
 ```sh
 ./scripts/install.sh
