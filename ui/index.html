@@ -506,6 +506,7 @@
       <button class="key" type="button" id="compare" aria-pressed="false" disabled>compare</button>
       <button class="key" type="button" id="save">save</button>
       <button class="key" type="button" id="browse" aria-expanded="false" aria-controls="browser">browse</button>
+      <button class="key" type="button" id="setup" aria-haspopup="dialog">midi</button>
     </div>
   </header>
 
@@ -547,6 +548,22 @@
       <div class="buttons">
         <button class="key" type="button" id="save-cancel">cancel</button>
         <button class="key" type="submit" id="save-confirm">save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="setup-dialog" aria-labelledby="setup-title">
+    <form method="dialog">
+      <h2 id="setup-title">MiniLab MK2</h2>
+      <label>Knob mode <select id="knob-mode">
+        <option value="1">Relative #1 (64 = still)</option>
+        <option value="2">Relative #2 (0 = still)</option>
+        <option value="3">Relative #3 (16 = still)</option>
+      </select></label>
+      <p class="note">Match the encoder mode set in MIDI Control Center. Knobs send CC 102–117 and follow the page on screen. Bank 1 pads send CC 20–27: six pages, then previous and next preset.</p>
+      <p class="note">Knobs and preset pads start working once this window has been opened in the session.</p>
+      <div class="buttons">
+        <button class="key" type="submit">done</button>
       </div>
     </form>
   </dialog>
@@ -632,7 +649,7 @@
         msg.params.forEach((p) => params.set(p.id, { ...p, value: p.default, text: "" }));
         pages = msg.pages;
         buildPageKeys();
-        showPage(pageIndex);
+        showPage(pageIndex, false);
         return;
       case "presets":
         presets = msg.presets;
@@ -654,6 +671,12 @@
       case "session":
         session = msg;
         renderSession();
+        return;
+      case "page":
+        if (msg.index !== pageIndex) showPage(msg.index, false);
+        return;
+      case "settings":
+        $("knob-mode").value = String(msg.knobMode);
         return;
       case "error":
         showToast(msg.message);
@@ -709,8 +732,9 @@
     }));
   }
 
-  function showPage(i) {
+  function showPage(i, notify = true) {
     pageIndex = i;
+    if (notify) bridge({ type: "page", index: i });
     const page = pages[i];
     if (!page) return;
     document.querySelectorAll(".pages .key").forEach((k, j) => k.setAttribute("aria-selected", String(j === i)));
@@ -865,6 +889,15 @@
     return [...new Set(presets.map((p) => p.category))];
   }
 
+  let sentOrder = "";
+  function sendOrder(list) {
+    const keys = list.map((p) => p.key);
+    const joined = keys.join("\n");
+    if (joined === sentOrder) return;
+    sentOrder = joined;
+    bridge({ type: "order", keys });
+  }
+
   function visiblePresets() {
     const words = filter.query.toLowerCase().split(/\s+/).filter(Boolean);
     return presets.filter((p) => {
@@ -901,6 +934,7 @@
     }));
 
     const list = visiblePresets();
+    sendOrder(list);
     $("count").textContent = list.length === 1 ? "1 preset" : `${list.length} presets`;
     const ul = $("preset-list");
     if (list.length === 0) {
@@ -1040,6 +1074,8 @@
   }
 
   $("save").addEventListener("click", openSave);
+  $("setup").addEventListener("click", () => $("setup-dialog").showModal());
+  $("knob-mode").addEventListener("change", (e) => bridge({ type: "knobMode", mode: Number(e.target.value) }));
   $("save-name").addEventListener("input", updateSaveNote);
   $("save-cancel").addEventListener("click", () => $("save-dialog").close());
   document.querySelector("#save-dialog form").addEventListener("submit", (e) => {
@@ -1068,6 +1104,7 @@
     const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
     if (e.key === "Escape") {
       if ($("save-dialog").open) $("save-dialog").close();
+      else if ($("setup-dialog").open) $("setup-dialog").close();
       else if (!$("browser").hidden) closeBrowser();
       return;
     }
@@ -1429,8 +1466,13 @@
           case "ready":
             send({ type: "init", params: state.data.params, pages: state.data.pages });
             send({ type: "presets", presets: listing() });
+            send({ type: "settings", knobMode: state.knobMode ?? 1 });
             sendValues(state.order);
             sendSession();
+            return;
+          case "knobMode":
+            state.knobMode = msg.mode;
+            send({ type: "settings", knobMode: msg.mode });
             return;
           case "set":
             state.values[msg.id] = msg.value;
