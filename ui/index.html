@@ -66,17 +66,20 @@
         0 1px 0 rgb(255 255 255 / 0.6) inset,
         0 -3px 6px rgb(0 0 0 / 0.25) inset;
       position: relative;
-      rotate: calc(-135deg + var(--turn, 0.5) * 270deg);
     }
 
     & .cap::after {
       content: "";
       position: absolute;
-      inset-inline: calc(50% - 2px);
-      inset-block-start: 8px;
-      height: 22%;
-      border-radius: 2px;
-      background: #fff;
+      inset: 0;
+      border-radius: 50%;
+      rotate: calc(-135deg + var(--turn, 0.5) * 270deg);
+      background: linear-gradient(#fff, #fff) center 8px / 4px 22% no-repeat;
+    }
+
+    &:focus-visible .cap {
+      outline: 2px solid var(--orange);
+      outline-offset: 4px;
     }
 
     & .name { color: var(--muted); text-transform: uppercase; }
