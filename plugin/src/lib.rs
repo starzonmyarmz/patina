@@ -66,7 +66,9 @@ impl Plugin for ThousandSynths {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        self.engine = Engine::new(buffer_config.sample_rate);
+        if self.engine.sample_rate() != buffer_config.sample_rate {
+            self.engine = Engine::new(buffer_config.sample_rate);
+        }
         true
     }
 

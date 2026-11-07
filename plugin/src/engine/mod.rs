@@ -225,6 +225,10 @@ impl Engine {
         self.aftertouch = 0.0;
     }
 
+    pub fn sample_rate(&self) -> f32 {
+        self.sr
+    }
+
     pub fn active_voices(&self) -> usize {
         self.voices.iter().filter(|v| v.active).count()
     }
