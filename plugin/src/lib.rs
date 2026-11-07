@@ -1,4 +1,5 @@
 pub mod engine;
+pub mod macros;
 pub mod params;
 
 use engine::{Engine, Transport, CHUNK};

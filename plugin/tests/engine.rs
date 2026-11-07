@@ -1,5 +1,6 @@
 use std::time::Instant;
 use thousand_synths::engine::{Engine, Transport, CHUNK};
+use thousand_synths::macros::{MacroMatrix, Target};
 use thousand_synths::params::{Pid, PlainValues, FILTER_TYPES, OSC_TYPES};
 
 const SR: f32 = 48_000.0;
@@ -212,6 +213,23 @@ fn every_effect_at_full_stays_bounded() {
     assert!(l.iter().chain(&r).all(|x| x.is_finite()));
     assert!(peak(&l).max(peak(&r)) <= 1.0);
     assert!(peak(&l[l.len() - 4800..]) > 1e-3);
+}
+
+#[test]
+fn mod_wheel_drives_macro_one() {
+    let mut v = PlainValues::default();
+    v.set(Pid::ReverbMix, 0.0);
+    let mut m = MacroMatrix::default();
+    m.0[0][0] = Some(Target { pid: Pid::Volume, amount: -1.0 });
+    let mut e = Engine::new(SR);
+    e.set_macros(m);
+    e.update(&v, Transport::default());
+    e.note_on(60, 1.0);
+    let (open, _) = render(&mut e, &v, 0.3);
+    e.set_mod_wheel(1.0);
+    let (closed, _) = render(&mut e, &v, 0.3);
+    assert!(peak(&open[7200..]) > 0.05);
+    assert!(peak(&closed[7200..]) < 1e-3, "{}", peak(&closed[7200..]));
 }
 
 /// cargo test --release -p thousand_synths --test engine -- --ignored --nocapture

@@ -5,6 +5,7 @@ pub mod lfo;
 pub mod osc;
 mod voice;
 
+use crate::macros::{MacroMatrix, MACROS, MACRO_PIDS};
 use crate::params::{Pid, Values, DIVISION_BEATS};
 use env::EnvCoeffs;
 use filter::fast_tanh;
@@ -18,7 +19,6 @@ pub const MAX_VOICES: usize = 16;
 pub const MAX_UNISON: usize = 8;
 pub const CHUNK: usize = 32;
 const SUPERSAW_COPIES: usize = 7;
-const MOD_WHEEL_BRIGHTNESS: f32 = 0.24;
 const BEND_RANGE: f32 = 2.0;
 
 /// Parameter values turned into DSP-ready numbers, refreshed every chunk.
@@ -89,7 +89,7 @@ fn unison_ratios(n: usize, cents: f32) -> [f32; MAX_UNISON] {
 }
 
 impl Patch {
-    pub fn read(p: &impl Values, sr: f32, mod_wheel: f32) -> Self {
+    pub fn read(p: &impl Values, sr: f32) -> Self {
         let pct = |id| p.get(id) / 100.0;
         let semis = |semi: Pid, cents: Pid| ((p.get(semi) + p.get(cents) / 100.0) / 12.0).exp2();
         let env = |a, d, s, r| EnvCoeffs::new(p.get(a), p.get(d), pct(s), p.get(r), sr);
@@ -126,7 +126,7 @@ impl Patch {
             spread: pct(Pid::Spread),
             glide: if glide_ms > 0.0 { 1.0 - (-1.0 / (glide_ms * 0.001 * sr).max(1.0)).exp() } else { 0.0 },
             ftype: p.index(Pid::FilterType),
-            cut: ((p.get(Pid::Cutoff) / 20.0).ln() / 1000f32.ln() + mod_wheel * MOD_WHEEL_BRIGHTNESS).clamp(0.0, 1.0),
+            cut: ((p.get(Pid::Cutoff) / 20.0).ln() / 1000f32.ln()).clamp(0.0, 1.0),
             res: pct(Pid::Resonance),
             drive: pct(Pid::FilterDrive) * 2.0,
             fenv: p.get(Pid::FilterEnvAmount),
@@ -191,6 +191,7 @@ pub struct Engine {
     bend: f32,
     aftertouch: f32,
     mod_wheel: f32,
+    macros: MacroMatrix,
     sustain: bool,
     last_freq: Option<f32>,
     stamp: u64,
@@ -214,6 +215,7 @@ impl Engine {
             bend: 0.0,
             aftertouch: 0.0,
             mod_wheel: 0.0,
+            macros: MacroMatrix::default(),
             sustain: false,
             last_freq: None,
             stamp: 0,
@@ -240,8 +242,16 @@ impl Engine {
         self.voices.iter().filter(|v| v.active).count()
     }
 
+    pub fn set_macros(&mut self, macros: MacroMatrix) {
+        self.macros = macros;
+    }
+
+    /// Reads parameters with macros applied. The mod wheel adds to macro 1.
     pub fn update(&mut self, params: &impl Values, transport: Transport) {
-        self.patch = Patch::read(params, self.sr, self.mod_wheel);
+        let mut amounts: [f32; MACROS] = std::array::from_fn(|i| params.get(MACRO_PIDS[i]) / 100.0);
+        amounts[0] = (amounts[0] + self.mod_wheel).min(1.0);
+        let params = &self.macros.apply(params, amounts);
+        self.patch = Patch::read(params, self.sr);
         let poly = self.patch.poly;
         self.voices[poly..].iter_mut().filter(|v| v.active).for_each(Voice::kill);
         let tempo = transport.tempo.unwrap_or(120.0) as f32;
