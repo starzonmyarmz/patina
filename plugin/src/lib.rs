@@ -2,6 +2,7 @@ pub mod app;
 pub mod audition;
 pub mod bridge;
 pub mod controls;
+#[cfg(target_os = "macos")]
 mod chrome;
 mod editor;
 pub mod engine;

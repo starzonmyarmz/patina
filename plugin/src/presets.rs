@@ -166,9 +166,16 @@ pub fn factory() -> &'static [Preset] {
     BANK.get_or_init(|| serde_json::from_str::<Bank>(FACTORY_JSON).map(|b| b.presets).unwrap_or_default())
 }
 
+#[cfg(not(windows))]
 pub fn user_dir() -> PathBuf {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     home.join("Library/Audio/Presets/Patina/User")
+}
+
+#[cfg(windows)]
+pub fn user_dir() -> PathBuf {
+    let home = std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_default();
+    home.join("Documents").join("Patina").join("User")
 }
 
 /// Every readable preset in `dir`, sorted by name. Unreadable files are skipped.

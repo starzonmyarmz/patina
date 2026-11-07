@@ -4,7 +4,6 @@ use crate::params::ThousandParams;
 use baseview::{Event, EventStatus, Size, Window, WindowHandle, WindowOpenOptions, WindowScalePolicy};
 use keyboard_types::{KeyState, Modifiers};
 use nih_plug::prelude::{Editor, GuiContext, ParentWindowHandle};
-use raw_window_handle::{AppKitWindowHandle, HasRawWindowHandle, RawWindowHandle};
 use serde_json::{json, Value};
 use std::any::Any;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,6 +15,7 @@ use wry::{WebView, WebViewBuilder};
 const SIZE: (u32, u32) = (960, 540);
 /// The traffic lights' left inset and center line in the app, matching the
 /// page's header row (14 px down, 26 px tall).
+#[cfg(target_os = "macos")]
 const TRAFFIC_LIGHTS: (f64, f64) = (20.0, 27.0);
 const UI_HTML: &str = include_str!("../../ui/index.html");
 /// Set to a dev server URL (e.g. http://localhost:5173) to load the UI live.
@@ -30,21 +30,6 @@ pub struct WebEditor {
 impl WebEditor {
     pub fn new(params: Arc<ThousandParams>, controls: Arc<Controls>) -> Self {
         Self { params, controls, changed: Arc::new(AtomicBool::new(true)) }
-    }
-}
-
-struct Parent(ParentWindowHandle);
-
-unsafe impl HasRawWindowHandle for Parent {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        match self.0 {
-            ParentWindowHandle::AppKitNsView(ns_view) => {
-                let mut handle = AppKitWindowHandle::empty();
-                handle.ns_view = ns_view;
-                RawWindowHandle::AppKit(handle)
-            }
-            _ => unreachable!("Patina only supports macOS"),
-        }
     }
 }
 
@@ -70,7 +55,7 @@ impl Editor for WebEditor {
         let controls = self.controls.clone();
         let changed = self.changed.clone();
         changed.store(true, Ordering::Release);
-        let handle = Window::open_parented(&Parent(parent), options, move |_window| {
+        let handle = Window::open_parented(&parent, options, move |_window| {
             let (tx, inbox) = channel();
             let bridge = Bridge::new(params.clone(), controls);
             Handler {
@@ -149,6 +134,7 @@ impl Handler {
             Err(_) => builder.with_html(UI_HTML),
         };
         self.webview = builder.and_then(|b| b.build()).ok();
+        #[cfg(target_os = "macos")]
         if crate::app::get().is_some() {
             crate::chrome::hide_title_bar(window, SIZE);
         }
@@ -163,6 +149,7 @@ impl Handler {
         }
     }
 
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
     fn handle(&mut self, raw: &str, window: &mut Window) {
         let Ok(msg) = serde_json::from_str::<Value>(raw) else {
             return;
@@ -174,6 +161,7 @@ impl Handler {
                 }
             }
             Some("keys") => self.page_has_focus = msg["active"].as_bool().unwrap_or(false),
+            #[cfg(target_os = "macos")]
             Some("moveWindow") if crate::app::get().is_some() => {
                 let delta = |key: &str| msg[key].as_f64().unwrap_or(0.0);
                 crate::chrome::move_by(window, delta("dx"), delta("dy"));
@@ -222,6 +210,7 @@ impl Drop for Handler {
 impl baseview::WindowHandler for Handler {
     fn on_frame(&mut self, window: &mut Window) {
         self.build_webview(window);
+        #[cfg(target_os = "macos")]
         if crate::app::get().is_some() {
             crate::chrome::place_traffic_lights(window, TRAFFIC_LIGHTS.0, TRAFFIC_LIGHTS.1);
         }

@@ -28,9 +28,15 @@ struct State {
 /// Browser order for the factory categories; others follow alphabetically.
 pub const CATEGORY_ORDER: &[&str] = &["Bass", "Lead", "Pad", "Keys", "Pluck", "Bell", "Brass", "Texture"];
 
+#[cfg(not(windows))]
 pub fn support_dir() -> PathBuf {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     home.join("Library/Application Support/Patina")
+}
+
+#[cfg(windows)]
+pub fn support_dir() -> PathBuf {
+    std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_default().join("Patina")
 }
 
 /// Where the plugin saves audition verdicts.
