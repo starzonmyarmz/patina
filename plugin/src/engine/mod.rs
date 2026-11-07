@@ -20,6 +20,7 @@ pub const MAX_UNISON: usize = 8;
 pub const CHUNK: usize = 32;
 const SUPERSAW_COPIES: usize = 7;
 const BEND_RANGE: f32 = 2.0;
+const VOICE_GAIN: f32 = 0.5;
 
 /// Parameter values turned into DSP-ready numbers, refreshed every chunk.
 #[derive(Default)]
@@ -362,17 +363,15 @@ impl Engine {
                 sl += vl;
                 sr += vr;
             }
-            let (mut xl, mut xr) = self.fx.tick(sl * 0.35, sr * 0.35, &self.fx_patch);
-
+            let (xl, xr) = self.fx.tick(sl * VOICE_GAIN, sr * VOICE_GAIN, &self.fx_patch);
+            let (mut xl, mut xr) = (dc_block(&mut self.dc[0], xl), dc_block(&mut self.dc[1], xr));
             if p.limiter {
                 xl = fast_tanh(xl);
                 xr = fast_tanh(xr);
             }
             self.volume += (p.volume - self.volume) * vol_step;
-            xl *= self.volume;
-            xr *= self.volume;
-            *l = dc_block(&mut self.dc[0], xl);
-            *r = dc_block(&mut self.dc[1], xr);
+            *l = xl * self.volume;
+            *r = xr * self.volume;
         }
     }
 }
