@@ -98,7 +98,7 @@ impl Comb {
         let y = x + fb * (self.buf[i0] + (self.buf[i1] - self.buf[i0]) * fr);
         self.buf[self.pos] = y;
         self.pos = (self.pos + 1) % COMB_LEN;
-        y * (1.0 - fb) * 1.5
+        y * (1.0 - fb * fb).sqrt()
     }
 
     pub fn reset(&mut self) {
