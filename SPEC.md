@@ -12,6 +12,7 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 | Platform | macOS, Apple Silicon only. Ad-hoc signed, installed by script. No notarization or installer. |
 | Engine | Same parameter set as the JSFX, better DSP. Presets carry over approximately, not bit-exactly. |
 | Tempo sync | LFOs and delay each have a free/sync toggle and a host-synced division. |
+| Arpeggiator | Built in, between MIDI input and the voice engine. Always tempo-synced. Saved in presets and off by default. |
 | Performance | 16 voices × up to 8 unison, under ~5% of one Apple Silicon core for a typical pad. |
 | Presets | Hand-tuned core plus generated variations. Shipping fewer than 1000 at first is fine. |
 | Macros | 8 per preset. Each preset defines what its macros are called and what they move. |
@@ -51,6 +52,8 @@ Each step ends with something that loads and plays in REAPER.
    factory bank".
 7. **Pad lights** and writing the MiniLab setup over SysEx. Done: see
    `docs/minilab-setup.md`.
+8. **Arpeggiator.** Note handling first, tested without audio. Then the Arp
+   page, preset support and the MiniLab pad.
 
 ## Parameters
 
@@ -80,6 +83,77 @@ Each page fills the 2×8 grid, in titled sections. Slots marked `—` are empty.
 The six page names fit pad bank 1 with two pads left for previous/next preset.
 `plugin/src/layout.rs` is authoritative; a test checks that every parameter is
 on exactly one page.
+
+## Arpeggiator
+
+The arp sits between MIDI input and the voice engine. When it's off, notes
+go straight through. When it's on, it collects the held notes and sends the
+engine one step at a time. Everything after the arp works the same:
+polyphony, glide, envelopes and FX. Because the arp only sees notes, it
+works the same with any note source: keys, pad bank 2, audition phrases, or
+a guitar-to-MIDI plugin placed before Patina in REAPER.
+
+### Parameters
+
+| ID | Name | Range | Default |
+|---|---|---|---|
+| `arp_on` | Arp | off / on | off |
+| `arp_mode` | Mode | up, down, up-down, down-up, as played, random, chord | up |
+| `arp_division` | Rate | 1/4, 1/4T, 1/8, 1/8T, 1/16, 1/16T, 1/32 | 1/16 |
+| `arp_octaves` | Octaves | 1–4 | 1 |
+| `arp_gate` | Gate | 5–100 % of a step | 50 % |
+| `arp_swing` | Swing | 0–50 % | 0 % |
+| `arp_repeats` | Repeats | 1–4 | 1 |
+| `arp_latch` | Latch | off / on | off |
+
+- **Modes.** Up and down sort the held notes by pitch. Up-down and down-up
+  don't repeat the top and bottom notes. As played keeps the order the keys
+  went down. Random picks a different note than the last one when it can.
+  Chord plays all held notes together on every step.
+- **Octaves.** The pattern plays across this many octaves, going up from
+  the played notes, then starts over.
+- **Gate.** How long each note lasts, as a share of a step. At 100 % each
+  note holds until the next one starts, so glide connects them.
+- **Swing.** Delays every second step by up to half a step.
+- **Repeats.** Plays each note this many times before moving to the next.
+- **Velocity.** Each step uses the velocity its key was played with.
+
+### Holding notes
+
+- Without latch, the pattern stops when the last key is released. Releasing
+  a key in the middle of a pattern removes that note at the next step.
+- With latch, notes keep playing after release. Keys pressed while others
+  are held join the pattern. Pressing a key after all keys are up starts a
+  new pattern. Turning latch off releases notes whose keys are already up.
+- The sustain pedal works like a temporary latch while held. It holds the
+  arp's notes, not the voices.
+- Turning the arp off, or changing preset, ends the current note.
+
+### Timing
+
+- **Host playing.** Steps line up with the host's beat grid, so a pattern
+  started early or late still lands on the beat.
+- **Host stopped, or the app.** The arp keeps its own clock at the host or
+  app tempo (120 BPM in the app). It starts when the first key goes down,
+  and the first step plays immediately.
+- Steps can fall anywhere inside a block. They're scheduled at their exact
+  sample, not rounded to block boundaries.
+
+### Presets
+
+Arp parameters are ordinary preset parameters. Old presets don't have them,
+so they load with the arp off. A preset can turn the arp on (for example, a
+sequenced bass), and macros can target the arp's continuous parameters,
+such as gate and swing.
+
+### Page and MiniLab
+
+The arp gets a seventh page, **Arp**. Row 1 has the eight parameters in the
+table order. Row 2 is empty for now.
+
+Pad bank 1 has no free pad, so one has to change. Recommended: pad 7 opens
+Arp and pad 8 is next preset (wrapping at the end). Previous preset moves to
+the editor and the app's keyboard. The app's 1–7 keys switch pages.
 
 ## Presets
 
