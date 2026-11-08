@@ -49,7 +49,8 @@ Each step ends with something that loads and plays in REAPER.
    guide.
 6. **Audition mode** and curation sessions. Done: see the README's "Curating the
    factory bank".
-7. **Pad lights**, after testing the SysEx on the device.
+7. **Pad lights** and writing the MiniLab setup over SysEx. Done: see
+   `docs/minilab-setup.md`.
 
 ## Parameters
 
@@ -112,19 +113,30 @@ One JSON object per preset:
 
 ## MiniLab MK2
 
-Configured once in Arturia MIDI Control Center and stored to the device. The
-exact settings go in `docs/minilab-setup.md` (step 5).
+The midi dialog writes the setup to the device over SysEx (MIDI Control
+Center works too). The exact settings are in `docs/minilab-setup.md`. Tested
+on firmware 1.1.2.25.
 
 - **Knobs 1–16**: relative mode, CC 102–117. The plugin supports all three of
-  Arturia's relative encodings; the one in use is a setting. Verify which
-  modes the MK2 firmware offers before writing the guide.
-- **Clickable knobs 1 and 9**: fine adjust while held, if the device sends a
-  usable message for the click. Not done yet.
+  Arturia's relative encodings; the one in use is a setting.
+- **Clickable knobs 1 and 9**: CC 118 and 119 as gates; every knob turns 8×
+  finer while either is held.
 - **Pad bank 1**: CC 20–27, momentary. Pages Osc, Shape, Filter, Mod, FX,
   Macro, previous preset, next preset.
 - **Pad bank 2**: notes, as the factory setup sends them.
 - **Touch strips**: pitch bend and mod wheel (CC1). Mod wheel adds to macro 1.
 - In audition mode, pad bank 2 rates presets instead of playing notes.
+- **Pad lights**: bank 1 shows the page, bank 2 the rating pads in audition
+  mode.
+
+SysEx, all `F0 00 20 6B 7F 42 … F7`: `01 00 <param> <control>` reads a
+setting and the device answers `02 00 <param> <control> <value>`; `02 00
+<param> <control> <value>` writes one. Params: 01 mode (01 control, 08
+switched, 09 note), 02 channel (41 global), 03 CC or note, 04 min, 05 max,
+06 behaviour (knobs: 00 absolute, 01–03 relative #1–#3; switched: 01 gate),
+10 pad color (write-only). Controls: knobs 1–16 are `30 01 02 09 0B 0C 0D 0E
+33 03 04 0A 05 06 07 08`, knob 1 and 9 clicks `31 34`, Shift-turned `32 35`,
+pads 1–16 `70`–`7F`.
 
 ## UI
 
@@ -137,10 +149,10 @@ exact settings go in `docs/minilab-setup.md` (step 5).
 
 ## Risks
 
-1. **Pad lights.** Arturia doesn't document SysEx for the MK2 pad colors; the
-   community-known messages need testing on this unit first. Lights also need
-   the plugin's MIDI output routed back to the MiniLab in REAPER, per project.
-   VST3 handles SysEx output poorly, so use the CLAP build.
+1. **Resolved: pad lights.** The community-known SysEx works on this unit.
+   Rather than route the plugin's MIDI output back to the MiniLab in each
+   REAPER project (and lose VST3, which can't send SysEx), a background
+   thread opens the MiniLab's port directly with midir.
 2. **Webview crate maturity.** nih-plug's webview support is a small community
    crate. The spike in step 4 decides whether it holds up or needs a fork.
 3. **Resolved: nih-plug failed 4 clap-validator 0.4 state tests.** It never
