@@ -4,7 +4,7 @@
 use crate::bridge::{current, load_preset, ContextHost, Host};
 use crate::layout::{KNOBS, PAGES};
 use crate::library::Library;
-use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, CLICKS, NEXT_PAD, PADS, PAD_FIRST_CC, PREV_PAD};
+use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, CLICKS, NEXT_PAD, PADS, PAD_FIRST_CC};
 use crate::params::{Pid, ThousandParams};
 use crate::presets::Preset;
 use crate::ratings::{Rating, Verdict};
@@ -156,10 +156,6 @@ impl Controls {
         match classify(cc, value, self.knob_mode()) {
             Some(Control::Knob { index, ticks }) => {
                 self.ticks[index].fetch_add(ticks, Ordering::AcqRel);
-                self.pending.store(true, Ordering::Release);
-            }
-            Some(Control::Pad(PREV_PAD)) => {
-                self.step.fetch_sub(1, Ordering::AcqRel);
                 self.pending.store(true, Ordering::Release);
             }
             Some(Control::Pad(NEXT_PAD)) => {
@@ -397,12 +393,18 @@ mod tests {
         controls.midi_cc(27, 127);
         controls.run_with(&params, &mut host);
         assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[0]));
-        controls.midi_cc(26, 127);
-        controls.midi_cc(26, 127);
+        controls.midi_cc(27, 127);
+        controls.midi_cc(27, 127);
         controls.run_with(&params, &mut host);
-        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[keys.len() - 2]));
+        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[2]));
 
-        controls.set_order(vec![keys[10].clone(), keys[3].clone()]);
+        controls.set_order(vec![keys[10].clone(), keys[2].clone()]);
+        controls.midi_cc(27, 127);
+        controls.run_with(&params, &mut host);
+        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[10]));
+        controls.midi_cc(27, 127);
+        controls.run_with(&params, &mut host);
+        assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[2]));
         controls.midi_cc(27, 127);
         controls.run_with(&params, &mut host);
         assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[10]));

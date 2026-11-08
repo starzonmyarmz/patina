@@ -6,7 +6,6 @@ use crate::ratings::Verdict;
 pub const KNOB_FIRST_CC: u8 = 102;
 pub const PAD_FIRST_CC: u8 = 20;
 pub const PADS: u8 = 8;
-pub const PREV_PAD: usize = 6;
 pub const NEXT_PAD: usize = 7;
 /// Knobs 1 and 9 send these while clicked. The factory CCs, 113 and 115,
 /// fall among the knobs'.
@@ -181,10 +180,9 @@ pub fn pad_color(pad: usize, color: Color) -> SysEx {
 /// A rated preset lights only its verdict's pad.
 pub fn lights(page: usize, audition: Option<Option<Verdict>>) -> [Color; LIGHTS] {
     let mut out = [Color::Off; LIGHTS];
-    for (i, light) in out[..PREV_PAD].iter_mut().enumerate() {
+    for (i, light) in out[..NEXT_PAD].iter_mut().enumerate() {
         *light = if i == page { Color::White } else { Color::Blue };
     }
-    out[PREV_PAD] = Color::Green;
     out[NEXT_PAD] = Color::Green;
     let Some(verdict) = audition else { return out };
     let bank = &mut out[PADS as usize..];
@@ -248,6 +246,7 @@ mod tests {
         let browsing = lights(2, None);
         assert_eq!(browsing[2], Color::White);
         assert_eq!(browsing[0], Color::Blue);
+        assert_eq!(browsing[6..8], [Color::Blue, Color::Green]);
         assert!(browsing[8..].iter().all(|c| *c == Color::Off));
 
         let unrated = lights(0, Some(None));

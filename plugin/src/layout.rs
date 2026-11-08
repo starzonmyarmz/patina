@@ -154,6 +154,6 @@ mod tests {
 
     #[test]
     fn pages_fit_pad_bank_one() {
-        assert!(PAGES.len() <= 6);
+        assert!(PAGES.len() <= crate::minilab::NEXT_PAD);
     }
 }
