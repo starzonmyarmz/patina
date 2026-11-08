@@ -18,7 +18,7 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 | Macros | 8 per preset. Each preset defines what its macros are called and what they move. |
 | Editing | Factory presets are read-only. Saving an edit creates a user preset. A dot marks unsaved changes; "compare" toggles between the edit and the saved preset. |
 | Curation | Hidden audition mode: plays a test phrase per preset; pads rate keep / cut / tweak into a file the generator reads. |
-| Layout | Pages that mirror the MiniLab's 2×8 knobs: Osc, Shape, Filter, Mod, FX, Macro. |
+| Layout | Pages that mirror the MiniLab's 2×8 knobs: Osc, Shape, Filter, Mod, FX, Macro, Arp. |
 | Hardware | Knobs in relative mode. Pad bank 1 = navigation, pad bank 2 = notes. |
 | UI | Native webview (WKWebView) with HTML/CSS. OP-1 light look. |
 | Repo | This repo. The JSFX repo stays as a frozen reference. |
@@ -52,8 +52,7 @@ Each step ends with something that loads and plays in REAPER.
    factory bank".
 7. **Pad lights** and writing the MiniLab setup over SysEx. Done: see
    `docs/minilab-setup.md`.
-8. **Arpeggiator.** Note handling first, tested without audio. Then the Arp
-   page, preset support and the MiniLab pad.
+8. **Arpeggiator.** Done: see Arpeggiator below.
 
 ## Parameters
 
@@ -80,7 +79,7 @@ Each page fills the 2×8 grid, in titled sections. Slots marked `—` are empty.
 | FX | distortion, bitcrush · chorus mix, rate · delay time, feedback, mix · LFO 3 →amp (tremolo) | reverb size, mix · EQ low, mid, high · compressor, width, limiter |
 | Macro | macros 1–8 | sync and division for LFO 1, LFO 2, LFO 3, delay |
 
-The six page names fit pad bank 1 with two pads left for previous/next preset.
+The seven page names fit pad bank 1 with one pad left for next preset.
 `plugin/src/layout.rs` is authoritative; a test checks that every parameter is
 on exactly one page.
 
@@ -132,10 +131,12 @@ a guitar-to-MIDI plugin placed before Patina in REAPER.
 ### Timing
 
 - **Host playing.** Steps line up with the host's beat grid, so a pattern
-  started early or late still lands on the beat.
+  started early or late still lands on the beat. A pattern started up to
+  30 ms after a step plays at once instead of waiting for the next one.
 - **Host stopped, or the app.** The arp keeps its own clock at the host or
   app tempo (120 BPM in the app). It starts when the first key goes down,
-  and the first step plays immediately.
+  and the first step plays 10 ms later, so every key of a chord played by
+  hand is in it.
 - Steps can fall anywhere inside a block. They're scheduled at their exact
   sample, not rounded to block boundaries.
 
@@ -151,9 +152,8 @@ such as gate and swing.
 The arp gets a seventh page, **Arp**. Row 1 has the eight parameters in the
 table order. Row 2 is empty for now.
 
-Pad bank 1 has no free pad, so one has to change. Recommended: pad 7 opens
-Arp and pad 8 is next preset (wrapping at the end). Previous preset moves to
-the editor and the app's keyboard. The app's 1–7 keys switch pages.
+Pad 7 opens Arp and pad 8 is next preset, wrapping at the end. Previous
+preset is in the editor (‹ and the [ key). The app's 1–7 keys switch pages.
 
 ## Presets
 

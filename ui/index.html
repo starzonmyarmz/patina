@@ -195,7 +195,7 @@
 
   .pages {
     display: grid;
-    grid-template-columns: repeat(3, 76px);
+    grid-template-columns: repeat(4, 76px);
     gap: 10px;
 
     & .key {
@@ -1315,7 +1315,7 @@
     if (e.key === "A" && e.shiftKey) return bridge({ type: "audition", on: !auditioning });
     const action = auditioning && AUDITION_KEYS.find(([, shortcut]) => shortcut === e.key);
     if (action) return action[2]();
-    if (/^[1-6]$/.test(e.key) && pages[Number(e.key) - 1]) showPage(Number(e.key) - 1);
+    if (/^[1-7]$/.test(e.key) && pages[Number(e.key) - 1]) showPage(Number(e.key) - 1);
     else if (e.key === "[") stepPreset(-1);
     else if (e.key === "]") stepPreset(1);
   });

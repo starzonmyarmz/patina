@@ -56,8 +56,8 @@ window.
 
 ## Using it
 
-- **Pages**: six keys (or 1–6 on the keyboard) switch the 16 knobs between
-  Osc, Shape, Filter, Mod, FX and Macro. The screen draws whatever the last
+- **Pages**: seven keys (or 1–7 on the keyboard) switch the 16 knobs between
+  Osc, Shape, Filter, Mod, FX, Macro and Arp. The screen draws whatever the last
   touched knob controls: waveform, filter curve, envelope, LFO, echoes, EQ.
 - **Knobs**: drag up/down (Shift for fine), scroll, or arrow keys when
   focused. Double-click resets. Click a switch knob to toggle it.
@@ -98,8 +98,8 @@ plugin doesn't clear one already merged into the repo: edit
 
 Patina programs the MiniLab itself whenever it connects; see
 [docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on
-screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and step
-presets, and light up to show the page.
+screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and step to
+the next preset, and light up to show the page.
 
 ## Working on the UI
 

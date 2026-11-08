@@ -5,6 +5,7 @@ pub mod lfo;
 pub mod osc;
 mod voice;
 
+use crate::arp;
 use crate::macros::{MacroMatrix, MACROS, MACRO_PIDS};
 use crate::params::{Pid, Values, DIVISION_BEATS};
 use env::EnvCoeffs;
@@ -77,6 +78,7 @@ pub struct Patch {
     pub keytrack: f32,
     pub volume: f32,
     pub limiter: bool,
+    pub arp: arp::Settings,
 }
 
 fn unison_ratios(n: usize, cents: f32) -> [f32; MAX_UNISON] {
@@ -160,6 +162,7 @@ impl Patch {
             keytrack: pct(Pid::KeyTrack) * 0.3,
             volume: pct(Pid::Volume),
             limiter: p.on(Pid::Limiter),
+            arp: arp::Settings::read(p),
         }
     }
 }
@@ -241,6 +244,11 @@ impl Engine {
 
     pub fn active_voices(&self) -> usize {
         self.voices.iter().filter(|v| v.active).count()
+    }
+
+    /// The arp's settings with macros applied, as of the last `update`.
+    pub fn arp(&self) -> arp::Settings {
+        self.patch.arp
     }
 
     pub fn set_macros(&mut self, macros: MacroMatrix) {

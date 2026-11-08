@@ -1,4 +1,5 @@
 pub mod app;
+pub mod arp;
 pub mod audition;
 pub mod bridge;
 pub mod controls;
@@ -15,6 +16,7 @@ pub mod params;
 pub mod presets;
 pub mod ratings;
 
+use arp::Arp;
 use audition::{Event, Events, Player};
 use engine::{Engine, Transport, CHUNK};
 use nih_plug::prelude::*;
@@ -28,6 +30,8 @@ pub struct Patina {
     params: Arc<ThousandParams>,
     controls: Arc<Controls>,
     engine: Engine,
+    arp: Arp,
+    arp_seen: u32,
     matrix_seen: u32,
     player: Player,
     phrase_events: Events,
@@ -43,6 +47,8 @@ impl Default for Patina {
             params: Arc::new(ThousandParams::default()),
             controls: Arc::new(Controls::new(Library::open())),
             engine: Engine::new(48_000.0),
+            arp: Arp::default(),
+            arp_seen: u32::MAX,
             matrix_seen: u32::MAX,
             player: Player::default(),
             phrase_events: Events::default(),
@@ -59,20 +65,33 @@ pub enum Task {
 }
 
 impl Patina {
-    fn handle(&mut self, event: NoteEvent<()>) {
+    fn handle(&mut self, event: NoteEvent<()>, at: usize) {
+        let engine = &mut self.engine;
+        let out = &mut |e| play(engine, e);
         match event {
             NoteEvent::NoteOn { note, velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
             NoteEvent::NoteOff { note, .. } if self.controls.midi_note(note, false) => {}
-            NoteEvent::NoteOn { note, velocity, .. } if velocity > 0.0 => self.engine.note_on(note, velocity),
-            NoteEvent::NoteOn { note, .. } | NoteEvent::NoteOff { note, .. } => self.engine.note_off(note),
+            NoteEvent::NoteOn { note, velocity, .. } if velocity > 0.0 => self.arp.key_on(at, note, velocity, out),
+            NoteEvent::NoteOn { note, .. } | NoteEvent::NoteOff { note, .. } => self.arp.key_off(note, out),
             NoteEvent::MidiPitchBend { value, .. } => self.engine.set_pitch_bend(value),
             NoteEvent::MidiChannelPressure { pressure, .. } => self.engine.set_aftertouch(pressure),
             NoteEvent::MidiCC { cc, value, .. } if self.controls.midi_cc(cc, (value * 127.0).round() as u8) => {}
             NoteEvent::MidiCC { cc, value, .. } => match cc {
                 1 => self.engine.set_mod_wheel(value),
-                64 => self.engine.set_sustain(value >= 0.5),
-                120 => self.engine.all_sound_off(),
-                123 => self.engine.all_notes_off(),
+                64 => {
+                    self.arp.pedal(value >= 0.5);
+                    if !self.arp.on() {
+                        self.engine.set_sustain(value >= 0.5);
+                    }
+                }
+                120 => {
+                    self.arp.panic(out);
+                    self.engine.all_sound_off();
+                }
+                123 => {
+                    self.arp.panic(out);
+                    self.engine.all_notes_off();
+                }
                 _ => {}
             },
             _ => {}
@@ -88,8 +107,8 @@ impl Patina {
         self.phrase_seen = generation;
         let restart = self.controls.take_restart() || (on && new_preset);
         if restart || (!on && self.player.playing()) {
-            let engine = &mut self.engine;
-            self.player.stop(|key| engine.note_off(key));
+            let (arp, engine) = (&mut self.arp, &mut self.engine);
+            self.player.stop(|key| arp.key_off(key, &mut |e| play(engine, e)));
             if on {
                 self.player.start(self.params.phrase());
             }
@@ -97,11 +116,28 @@ impl Patina {
         self.player.block(len, self.engine.sample_rate(), tempo, &mut self.phrase_events);
     }
 
-    fn play(&mut self, event: Event) {
-        match event {
-            Event::On(key, velocity) => self.engine.note_on(key, velocity),
-            Event::Off(key) => self.engine.note_off(key),
+    /// Starts the block for the arp. Turning it on hands the pedal to it,
+    /// and changing preset ends its note.
+    fn begin_arp(&mut self, len: usize, transport: Transport) {
+        let (sample_rate, settings) = (self.engine.sample_rate(), self.engine.arp());
+        let was_on = self.arp.on();
+        let engine = &mut self.engine;
+        self.arp.begin(len, sample_rate, transport, settings, &mut |e| play(engine, e));
+        if self.arp.on() && !was_on {
+            self.engine.set_sustain(false);
         }
+        let generation = self.params.session_generation();
+        if std::mem::replace(&mut self.arp_seen, generation) != generation {
+            let engine = &mut self.engine;
+            self.arp.end_note(&mut |e| play(engine, e));
+        }
+    }
+}
+
+fn play(engine: &mut Engine, event: Event) {
+    match event {
+        Event::On(key, velocity) => engine.note_on(key, velocity),
+        Event::Off(key) => engine.note_off(key),
     }
 }
 
@@ -167,6 +203,7 @@ impl Plugin for Patina {
 
     fn reset(&mut self) {
         self.engine.reset();
+        self.arp = Arp::default();
     }
 
     fn process(
@@ -192,6 +229,7 @@ impl Plugin for Patina {
         let [left, right] = buffer.as_slice() else {
             return ProcessStatus::Normal;
         };
+        self.begin_arp(len, transport);
         self.audition(len, transport.tempo);
         let mut phrase = 0;
         let mut event = context.next_event();
@@ -201,17 +239,27 @@ impl Plugin for Patina {
                 if e.timing() as usize > pos {
                     break;
                 }
-                self.handle(e);
+                self.handle(e, pos);
                 event = context.next_event();
             }
             while let Some(&(at, e)) = self.phrase_events.as_slice().get(phrase) {
                 if at as usize > pos {
                     break;
                 }
-                self.play(e);
+                let engine = &mut self.engine;
+                let out = &mut |e| play(engine, e);
+                match e {
+                    Event::On(key, velocity) => self.arp.key_on(pos, key, velocity, out),
+                    Event::Off(key) => self.arp.key_off(key, out),
+                }
                 phrase += 1;
             }
+            let engine = &mut self.engine;
+            self.arp.fire(pos, &mut |e| play(engine, e));
             let mut end = (pos + CHUNK).min(len);
+            if let Some(due) = self.arp.next_due().filter(|due| *due > pos) {
+                end = end.min(due);
+            }
             if let Some(e) = &event {
                 end = end.min(e.timing() as usize);
             }

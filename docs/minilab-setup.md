@@ -35,11 +35,11 @@ Every control sends on the MiniLab’s global channel.
 | 4 | 〃 | 23 | Mod page | 〃 |
 | 5 | 〃 | 24 | FX page | 〃 |
 | 6 | 〃 | 25 | Macro page | 〃 |
-| 7 | 〃 | 26 | Previous preset | Green |
-| 8 | 〃 | 27 | Next preset | Green |
+| 7 | 〃 | 26 | Arp page | 〃 |
+| 8 | 〃 | 27 | Next preset, wrapping at the end | Green |
 
-The pads act on press (any value above 0). Previous and next step through
-the presets the browser is showing, so filter to "Pad" or your favorites first
+The pads act on press (any value above 0). Next preset steps through the
+presets the browser is showing, so filter to "Pad" or your favorites first
 to step through just those.
 
 ## Pads, bank 2

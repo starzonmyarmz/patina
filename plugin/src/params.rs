@@ -48,6 +48,9 @@ pub const DIVISION_BEATS: &[f32] = &[
     1.0 / 12.0, 0.125, 1.0 / 6.0, 0.25, 0.375, 1.0 / 3.0, 0.5, 0.75, 2.0 / 3.0, 1.0, 1.5, 2.0, 3.0,
     4.0, 8.0, 16.0,
 ];
+pub const ARP_MODES: &[&str] = &["Up", "Down", "Up-down", "Down-up", "As played", "Random", "Chord"];
+pub const ARP_DIVISIONS: &[&str] = &["1/4", "1/4T", "1/8", "1/8T", "1/16", "1/16T", "1/32"];
+pub const ARP_DIVISION_BEATS: &[f32] = &[1.0, 2.0 / 3.0, 0.5, 1.0 / 3.0, 0.25, 1.0 / 6.0, 0.125];
 
 macro_rules! params {
     ($( $group:literal { $( $pid:ident = $id:literal, $name:literal, $kind:expr, $default:expr, $unit:literal, $jsfx:expr; )* } )*) => {
@@ -183,6 +186,16 @@ params! {
         Compressor = "compressor", "Compressor", PCT, 0, " %", Some(114);
         Width = "width", "Stereo width", lin(0.0, 200.0), 100, " %", Some(115);
         Limiter = "limiter", "Output limiter", Kind::Bool, 1, "", Some(116);
+    }
+    "Arp" {
+        ArpOn = "arp_on", "Arp", Kind::Bool, 0, "", None;
+        ArpMode = "arp_mode", "Arp mode", Kind::Enum(ARP_MODES), 0, "", None;
+        ArpDivision = "arp_division", "Arp rate", Kind::Enum(ARP_DIVISIONS), 4, "", None;
+        ArpOctaves = "arp_octaves", "Arp octaves", int(1, 4), 1, "", None;
+        ArpGate = "arp_gate", "Arp gate", lin(5.0, 100.0), 50, " %", None;
+        ArpSwing = "arp_swing", "Arp swing", lin(0.0, 50.0), 0, " %", None;
+        ArpRepeats = "arp_repeats", "Arp repeats", int(1, 4), 1, "", None;
+        ArpLatch = "arp_latch", "Arp latch", Kind::Bool, 0, "", None;
     }
 }
 
@@ -518,5 +531,6 @@ mod tests {
     #[test]
     fn divisions_match_beats() {
         assert_eq!(DIVISIONS.len(), DIVISION_BEATS.len());
+        assert_eq!(ARP_DIVISIONS.len(), ARP_DIVISION_BEATS.len());
     }
 }

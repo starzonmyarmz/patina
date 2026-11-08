@@ -122,6 +122,25 @@ pub const PAGES: &[Page] = &[
             ],
         ],
     },
+    Page {
+        name: "Arp",
+        rows: [
+            &[s(
+                "Arp",
+                &[
+                    (ArpOn, "On"),
+                    (ArpMode, "Mode"),
+                    (ArpDivision, "Rate"),
+                    (ArpOctaves, "Octaves"),
+                    (ArpGate, "Gate"),
+                    (ArpSwing, "Swing"),
+                    (ArpRepeats, "Repeats"),
+                    (ArpLatch, "Latch"),
+                ],
+            )],
+            &[],
+        ],
+    },
 ];
 
 #[cfg(test)]
@@ -154,6 +173,6 @@ mod tests {
 
     #[test]
     fn pages_fit_pad_bank_one() {
-        assert!(PAGES.len() <= crate::minilab::NEXT_PAD);
+        assert_eq!(PAGES.len(), crate::minilab::NEXT_PAD);
     }
 }

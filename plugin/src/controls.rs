@@ -408,6 +408,8 @@ mod tests {
         controls.midi_cc(27, 127);
         controls.run_with(&params, &mut host);
         assert_eq!(controls.library().key_of(&params.session()).as_ref(), Some(&keys[10]));
+        assert!(controls.midi_cc(26, 127));
+        assert_eq!(PAGES[controls.page()].name, "Arp");
         let _ = std::fs::remove_dir_all(root);
     }
 
