@@ -4,7 +4,7 @@
 use crate::bridge::{current, load_preset, ContextHost, Host};
 use crate::layout::{KNOBS, PAGES};
 use crate::library::Library;
-use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, NEXT_PAD, PREV_PAD};
+use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, CLICKS, NEXT_PAD, PREV_PAD};
 use crate::params::{Pid, ThousandParams};
 use crate::presets::Preset;
 use crate::ratings::{Rating, Verdict};
@@ -17,6 +17,8 @@ pub const DEFAULT_TEMPO: f32 = 120.0;
 
 /// Encoder ticks to sweep a continuous parameter end to end.
 const TICKS_PER_SWEEP: f32 = 128.0;
+/// How much finer continuous parameters turn while knob 1 or 9 is held.
+const FINE: f32 = 8.0;
 
 pub struct Controls {
     page: AtomicUsize,
@@ -24,6 +26,8 @@ pub struct Controls {
     step: AtomicI32,
     pending: AtomicBool,
     knob_mode: AtomicU8,
+    /// Knobs 1 and 9, while clicked.
+    held: [AtomicBool; CLICKS as usize],
     /// Taken on initialize. Cleared on deactivate: the context holds the
     /// plugin wrapper, which owns us.
     context: Mutex<Option<Arc<dyn GuiContext>>>,
@@ -50,6 +54,7 @@ impl Controls {
             step: AtomicI32::new(0),
             pending: AtomicBool::new(false),
             knob_mode: AtomicU8::new(mode as u8),
+            held: Default::default(),
             context: Mutex::new(None),
             library: Mutex::new(library),
             order: Mutex::new(Vec::new()),
@@ -79,6 +84,10 @@ impl Controls {
     pub fn set_knob_mode(&self, mode: KnobMode) {
         self.knob_mode.store(mode as u8, Ordering::Relaxed);
         let _ = self.library().set_knob_mode(mode as u8);
+    }
+
+    fn fine(&self) -> bool {
+        self.held.iter().any(|h| h.load(Ordering::Relaxed))
     }
 
     pub fn library(&self) -> MutexGuard<'_, Library> {
@@ -148,6 +157,7 @@ impl Controls {
                 self.pending.store(true, Ordering::Release);
             }
             Some(Control::Pad(page)) => self.set_page(page),
+            Some(Control::Click { index, down }) => self.held[index].store(down, Ordering::Relaxed),
             None => return false,
         }
         true
@@ -188,6 +198,7 @@ impl Controls {
 
     pub fn run_with(&self, params: &ThousandParams, host: &mut impl Host) {
         let slots = PAGES[self.page()].slots();
+        let sweep = if self.fine() { TICKS_PER_SWEEP * FINE } else { TICKS_PER_SWEEP };
         {
             let mut fractions = self.fractions.lock().unwrap_or_else(|e| e.into_inner());
             for (i, slot) in slots.iter().enumerate() {
@@ -196,7 +207,7 @@ impl Controls {
                 if ticks == 0 {
                     continue;
                 }
-                if let Some(target) = turn(pid, host.normalized(pid), ticks, &mut fractions[i]) {
+                if let Some(target) = turn(pid, host.normalized(pid), ticks, sweep, &mut fractions[i]) {
                     host.begin(pid);
                     host.set(pid, target);
                     host.end(pid);
@@ -280,12 +291,13 @@ impl Controls {
     }
 }
 
-/// The normalized value after `ticks` encoder ticks, or None when it
-/// doesn't move. Stepped parameters take several ticks per step when they
-/// have few steps, so menus don't race past.
-fn turn(pid: Pid, current: f32, ticks: i32, fraction: &mut f32) -> Option<f32> {
+/// The normalized value after `ticks` encoder ticks, where `sweep` ticks
+/// cover a continuous parameter's range, or None when it doesn't move.
+/// Stepped parameters take several ticks per step when they have few steps,
+/// so menus don't race past.
+fn turn(pid: Pid, current: f32, ticks: i32, sweep: f32, fraction: &mut f32) -> Option<f32> {
     let target = match pid.spec().steps() {
-        None => (current + ticks as f32 / TICKS_PER_SWEEP).clamp(0.0, 1.0),
+        None => (current + ticks as f32 / sweep).clamp(0.0, 1.0),
         Some(steps) => {
             let ticks_per_step = if steps <= 16.0 { 4.0 } else { 1.0 };
             *fraction += ticks as f32 / ticks_per_step;
@@ -341,14 +353,30 @@ mod tests {
     }
 
     #[test]
+    fn holding_knob_1_or_9_turns_finer() {
+        let (root, controls, params, mut host) = setup("fine");
+        let before = host.normalized(Pid::Osc1Level);
+        let slot = PAGES[0].slots().iter().position(|s| *s == Some(Pid::Osc1Level)).unwrap();
+        assert!(controls.midi_cc(119, 127));
+        controls.midi_cc(102 + slot as u8, 64 + 8);
+        controls.run_with(&params, &mut host);
+        assert!((host.normalized(Pid::Osc1Level) - (before + 1.0 / TICKS_PER_SWEEP)).abs() < 1e-6);
+        controls.midi_cc(119, 0);
+        controls.midi_cc(102 + slot as u8, 64 + 8);
+        controls.run_with(&params, &mut host);
+        assert!((host.normalized(Pid::Osc1Level) - (before + 9.0 / TICKS_PER_SWEEP)).abs() < 1e-6);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn menus_need_several_ticks_per_step() {
         let mut fraction = 0.0;
         let pid = Pid::Osc1Type;
         let start = pid.spec().normalize(1.0);
-        assert_eq!(turn(pid, start, 3, &mut fraction), None);
-        let next = turn(pid, start, 1, &mut fraction).unwrap();
+        assert_eq!(turn(pid, start, 3, TICKS_PER_SWEEP, &mut fraction), None);
+        let next = turn(pid, start, 1, TICKS_PER_SWEEP, &mut fraction).unwrap();
         assert_eq!(pid.spec().denormalize(next), 2.0);
-        assert_eq!(turn(Pid::Osc1Type, 0.0, -4, &mut 0.0), None);
+        assert_eq!(turn(Pid::Osc1Type, 0.0, -4, TICKS_PER_SWEEP, &mut 0.0), None);
     }
 
     #[test]

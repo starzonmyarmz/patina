@@ -7,6 +7,10 @@ pub const PAD_FIRST_CC: u8 = 20;
 pub const PADS: u8 = 8;
 pub const PREV_PAD: usize = 6;
 pub const NEXT_PAD: usize = 7;
+/// Knobs 1 and 9 send these while clicked. The factory CCs, 113 and 115,
+/// fall among the knobs'.
+pub const CLICK_FIRST_CC: u8 = 118;
+pub const CLICKS: u8 = 2;
 /// The second pad bank's notes, as the MiniLab sends them out of the box.
 pub const RATING_FIRST_NOTE: u8 = 44;
 
@@ -77,6 +81,8 @@ pub enum Control {
     Knob { index: usize, ticks: i32 },
     /// A pad in bank 1 went down.
     Pad(usize),
+    /// Knob 1 (index 0) or knob 9 (index 1) was pressed or released.
+    Click { index: usize, down: bool },
 }
 
 pub fn classify(cc: u8, value: u8, mode: KnobMode) -> Option<Control> {
@@ -86,6 +92,9 @@ pub fn classify(cc: u8, value: u8, mode: KnobMode) -> Option<Control> {
     }
     if (PAD_FIRST_CC..PAD_FIRST_CC + PADS).contains(&cc) {
         return (value > 0).then_some(Control::Pad((cc - PAD_FIRST_CC) as usize));
+    }
+    if (CLICK_FIRST_CC..CLICK_FIRST_CC + CLICKS).contains(&cc) {
+        return Some(Control::Click { index: (cc - CLICK_FIRST_CC) as usize, down: value > 0 });
     }
     None
 }
@@ -106,12 +115,14 @@ mod tests {
         let m = KnobMode::Relative1;
         assert_eq!(classify(102, 65, m), Some(Control::Knob { index: 0, ticks: 1 }));
         assert_eq!(classify(117, 62, m), Some(Control::Knob { index: 15, ticks: -2 }));
-        assert_eq!(classify(118, 65, m), None);
+        assert_eq!(classify(120, 65, m), None);
         assert_eq!(classify(102, 64, m), None);
         assert_eq!(classify(20, 127, m), Some(Control::Pad(0)));
         assert_eq!(classify(27, 127, m), Some(Control::Pad(NEXT_PAD)));
         assert_eq!(classify(27, 0, m), None);
         assert_eq!(classify(1, 127, m), None);
+        assert_eq!(classify(118, 127, m), Some(Control::Click { index: 0, down: true }));
+        assert_eq!(classify(119, 0, m), Some(Control::Click { index: 1, down: false }));
     }
 
     #[test]
