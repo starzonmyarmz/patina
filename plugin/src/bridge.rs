@@ -112,12 +112,14 @@ impl Bridge {
                 if let Some(app) = crate::app::get() {
                     crate::app::save(&self.params, self.controls.app_tempo(), host);
                     let name = |key: &str| msg[key].as_str().map(String::from);
+                    crate::lights::turn_off_now();
                     (app.relaunch)(name("output"), name("midiInput"));
                 }
             }
             ("quit", _) => {
                 if crate::app::get().is_some() {
                     crate::app::save(&self.params, self.controls.app_tempo(), host);
+                    crate::lights::turn_off_now();
                     std::process::exit(0);
                 }
             }

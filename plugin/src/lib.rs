@@ -8,6 +8,7 @@ mod editor;
 pub mod engine;
 pub mod layout;
 pub mod library;
+mod lights;
 pub mod macros;
 pub mod minilab;
 pub mod params;
@@ -32,6 +33,7 @@ pub struct Patina {
     phrase_events: Events,
     phrase_seen: u32,
     restored: bool,
+    lights: bool,
 }
 
 impl Default for Patina {
@@ -46,6 +48,7 @@ impl Default for Patina {
             phrase_events: Events::default(),
             phrase_seen: u32::MAX,
             restored: false,
+            lights: false,
         }
     }
 }
@@ -148,6 +151,9 @@ impl Plugin for Patina {
         context: &mut impl InitContext<Self>,
     ) -> bool {
         self.controls.keep_context(|| context.gui_context());
+        if !std::mem::replace(&mut self.lights, true) {
+            lights::spawn(Arc::downgrade(&self.params), Arc::downgrade(&self.controls));
+        }
         if app::get().is_some() && !std::mem::replace(&mut self.restored, true) {
             let gui = context.gui_context();
             let tempo = app::restore(&self.params, &mut bridge::ContextHost::new(&*gui, &self.params));
