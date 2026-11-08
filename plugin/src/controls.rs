@@ -4,7 +4,7 @@
 use crate::bridge::{current, load_preset, ContextHost, Host};
 use crate::layout::{KNOBS, PAGES};
 use crate::library::Library;
-use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, CLICKS, NEXT_PAD, PREV_PAD};
+use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, CLICKS, NEXT_PAD, PADS, PAD_FIRST_CC, PREV_PAD};
 use crate::params::{Pid, ThousandParams};
 use crate::presets::Preset;
 use crate::ratings::{Rating, Verdict};
@@ -28,6 +28,8 @@ pub struct Controls {
     knob_mode: AtomicU8,
     /// Knobs 1 and 9, while clicked.
     held: [AtomicBool; CLICKS as usize],
+    /// Counts pad presses and releases, which repaint the pad on the device.
+    pad_touches: AtomicU32,
     /// Taken on initialize. Cleared on deactivate: the context holds the
     /// plugin wrapper, which owns us.
     context: Mutex<Option<Arc<dyn GuiContext>>>,
@@ -55,6 +57,7 @@ impl Controls {
             pending: AtomicBool::new(false),
             knob_mode: AtomicU8::new(mode as u8),
             held: Default::default(),
+            pad_touches: AtomicU32::new(0),
             context: Mutex::new(None),
             library: Mutex::new(library),
             order: Mutex::new(Vec::new()),
@@ -84,6 +87,10 @@ impl Controls {
     pub fn set_knob_mode(&self, mode: KnobMode) {
         self.knob_mode.store(mode as u8, Ordering::Relaxed);
         let _ = self.library().set_knob_mode(mode as u8);
+    }
+
+    pub fn pad_touches(&self) -> u32 {
+        self.pad_touches.load(Ordering::Acquire)
     }
 
     fn fine(&self) -> bool {
@@ -143,6 +150,9 @@ impl Controls {
 
     /// Audio thread. Returns false for CCs the MiniLab setup doesn't use.
     pub fn midi_cc(&self, cc: u8, value: u8) -> bool {
+        if (PAD_FIRST_CC..PAD_FIRST_CC + PADS).contains(&cc) {
+            self.pad_touches.fetch_add(1, Ordering::Release);
+        }
         match classify(cc, value, self.knob_mode()) {
             Some(Control::Knob { index, ticks }) => {
                 self.ticks[index].fetch_add(ticks, Ordering::AcqRel);
@@ -166,10 +176,11 @@ impl Controls {
     /// Audio thread. In audition mode the second pad bank rates instead of
     /// playing; returns true for notes it takes.
     pub fn midi_note(&self, note: u8, down: bool) -> bool {
+        let Some(pad) = rating_pad(note) else { return false };
+        self.pad_touches.fetch_add(1, Ordering::Release);
         if !self.audition() {
             return false;
         }
-        let Some(pad) = rating_pad(note) else { return false };
         if down {
             self.rating_pad.store(pad as u8 + 1, Ordering::Release);
             self.pending.store(true, Ordering::Release);
@@ -458,6 +469,17 @@ mod tests {
     fn only_factory_presets_are_rated() {
         let (root, controls, params, mut host) = setup("rate-new");
         assert!(controls.rate(&params, Some(Verdict::Keep), &mut host).is_err());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn pad_presses_and_releases_are_counted() {
+        let (root, controls, ..) = setup("touches");
+        controls.midi_cc(20, 127);
+        controls.midi_cc(20, 0);
+        controls.midi_note(44, true);
+        controls.midi_note(60, true);
+        assert_eq!(controls.pad_touches(), 3);
         let _ = std::fs::remove_dir_all(root);
     }
 

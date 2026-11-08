@@ -14,6 +14,9 @@ use std::time::{Duration, Instant};
 const DEVICE: &str = "MiniLab";
 const POLL: Duration = Duration::from_millis(30);
 const RECHECK: Duration = Duration::from_secs(1);
+/// The MiniLab lights a pad itself when it's hit, so the lights go out
+/// again after each touch, and once more in case it repaints late.
+const REPAINT_AGAIN: Duration = Duration::from_millis(150);
 
 fn minilab_connected() -> bool {
     MidiOutput::new("Patina").is_ok_and(|out| out.ports().iter().any(|p| out.port_name(p).is_ok_and(|n| n.contains(DEVICE))))
@@ -45,6 +48,8 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
         let mut checked = None::<Instant>;
         let mut sent: [Option<Color>; LIGHTS] = [None; LIGHTS];
         let mut set_up = None;
+        let mut touches = 0;
+        let mut repaint_at = None::<Instant>;
         let mut verdict = VerdictLookup::default();
         loop {
             let (Some(params), Some(controls)) = (params.upgrade(), controls.upgrade()) else { break };
@@ -59,6 +64,15 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
                     sent = [None; LIGHTS];
                     set_up = None;
                 }
+            }
+            let now_touches = controls.pad_touches();
+            if now_touches != touches {
+                touches = now_touches;
+                sent = [None; LIGHTS];
+                repaint_at = Some(Instant::now() + REPAINT_AGAIN);
+            } else if repaint_at.is_some_and(|t| Instant::now() >= t) {
+                sent = [None; LIGHTS];
+                repaint_at = None;
             }
             if let Some(conn) = &mut connection {
                 let mut messages: Vec<SysEx> = Vec::new();
