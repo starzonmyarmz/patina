@@ -138,13 +138,6 @@ impl Bridge {
                 self.controls.set_knob_mode(mode);
                 out.push(self.settings_message());
             }
-            ("setupMinilab", _) => {
-                let found = crate::lights::minilab_connected();
-                if found {
-                    self.controls.request_setup();
-                }
-                out.push(json!({ "type": "minilabSetup", "found": found }));
-            }
             ("begin", Some(pid)) => host.begin(pid),
             ("set", Some(pid)) => {
                 if let Some(v) = msg["value"].as_f64() {

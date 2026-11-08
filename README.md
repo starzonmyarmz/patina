@@ -96,7 +96,7 @@ plugin doesn't clear one already merged into the repo: edit
 
 ## MiniLab MK2
 
-Press **set up MiniLab** in the **midi** dialog to program the device, or see
+Patina programs the MiniLab itself whenever it connects; see
 [docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on
 screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and step
 presets, and light up to show the page.

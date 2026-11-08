@@ -113,8 +113,8 @@ One JSON object per preset:
 
 ## MiniLab MK2
 
-The midi dialog writes the setup to the device over SysEx (MIDI Control
-Center works too). The exact settings are in `docs/minilab-setup.md`. Tested
+Patina writes the setup to the device over SysEx on every connect, since the
+device forgets SysEx-written settings when it powers off. The exact settings are in `docs/minilab-setup.md`. Tested
 on firmware 1.1.2.25.
 
 - **Knobs 1–16**: relative mode, CC 102–117. The plugin supports all three of

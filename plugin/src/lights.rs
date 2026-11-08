@@ -1,5 +1,7 @@
 //! Talks to the MiniLab's MIDI input directly rather than through the host,
-//! so the lights work in VST3 and need no routing in the DAW.
+//! so the lights work in VST3 and need no routing in the DAW. The device
+//! forgets settings written over SysEx when it powers off, so the setup goes
+//! out on every connect.
 
 use crate::controls::Controls;
 use crate::minilab::{lights, pad_color, setup, Color, SysEx, LIGHTS};
@@ -11,9 +13,9 @@ use std::time::{Duration, Instant};
 
 const DEVICE: &str = "MiniLab";
 const POLL: Duration = Duration::from_millis(30);
-const RECONNECT: Duration = Duration::from_secs(2);
+const RECHECK: Duration = Duration::from_secs(1);
 
-pub fn minilab_connected() -> bool {
+fn minilab_connected() -> bool {
     MidiOutput::new("Patina").is_ok_and(|out| out.ports().iter().any(|p| out.port_name(p).is_ok_and(|n| n.contains(DEVICE))))
 }
 
@@ -40,21 +42,30 @@ pub fn turn_off_now() {
 pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
     let _ = std::thread::Builder::new().name("Patina lights".into()).spawn(move || {
         let mut connection: Option<MidiOutputConnection> = None;
-        let mut tried = None::<Instant>;
+        let mut checked = None::<Instant>;
         let mut sent: [Option<Color>; LIGHTS] = [None; LIGHTS];
+        let mut set_up = None;
         let mut verdict = VerdictLookup::default();
         loop {
             let (Some(params), Some(controls)) = (params.upgrade(), controls.upgrade()) else { break };
-            if connection.is_none() && tried.is_none_or(|t| t.elapsed() >= RECONNECT) {
-                tried = Some(Instant::now());
-                connection = connect();
-                sent = [None; LIGHTS];
+            if checked.is_none_or(|t| t.elapsed() >= RECHECK) {
+                checked = Some(Instant::now());
+                // Sends to an unplugged device don't fail, so look for it.
+                if connection.is_some() && !minilab_connected() {
+                    connection = None;
+                }
+                if connection.is_none() {
+                    connection = connect();
+                    sent = [None; LIGHTS];
+                    set_up = None;
+                }
             }
             if let Some(conn) = &mut connection {
                 let mut messages: Vec<SysEx> = Vec::new();
-                if controls.take_setup() {
-                    messages.extend(setup(controls.knob_mode()));
-                    sent = [None; LIGHTS];
+                let mode = controls.knob_mode();
+                if set_up != Some(mode) {
+                    messages.extend(setup(mode));
+                    set_up = Some(mode);
                 }
                 let audition = controls.audition().then(|| verdict.get(&params, &controls));
                 for (i, color) in lights(controls.page(), audition).into_iter().enumerate() {

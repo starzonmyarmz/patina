@@ -1,10 +1,9 @@
 # MiniLab MK2 setup
 
-Patina expects the MiniLab to send the messages below. The quickest way to
-get there: open the **midi** dialog, pick a knob mode, and press **set up
-MiniLab**. Patina writes these settings to the device over SysEx, replacing
-the current ones. The tables are for checking, or for setting it up by hand
-in Arturia **MIDI Control Center** (MCC).
+Patina writes the settings below to the MiniLab over SysEx whenever it
+connects to it: when the plugin or app starts, and when the MiniLab is
+plugged back in. There’s nothing to set up. The device forgets them when it
+powers off, so other apps get its own settings back.
 
 Every control sends on the MiniLab’s global channel.
 
@@ -16,15 +15,15 @@ Every control sends on the MiniLab’s global channel.
 | 1 and 9, clicked | Switched control, momentary (gate) | 118 (knob 1), 119 (knob 9) |
 | 1 and 9, with Shift | Same as the knob | 102, 110 |
 
-- Relative #2 and #3 also work if the plugin’s **midi** dialog has the same
-  mode. **set up MiniLab** uses the dialog’s mode.
+- The knob mode in the **midi** dialog picks Relative #1, #2 or #3, and
+  changing it updates the device.
 - Relative mode means the knobs never jump: turning a knob nudges whatever
   parameter is under it on the current page, from its current value.
 - Knobs 1–8 are the top row on screen and 9–16 the bottom row. Empty slots on
   a page ignore their knob.
 - Hold knob 1 or 9 down to turn every knob 8× finer. Menus step as usual.
 - Out of the box the clicks send CC 113 and 115, which Patina would read as
-  knobs 12 and 14, so move them in MCC if you set up by hand.
+  knobs 12 and 14; the setup moves them.
 
 ## Pads, bank 1
 
@@ -69,18 +68,11 @@ to macro 1.
 
 ## Lights
 
-Patina sends the pad lights straight to the MiniLab over CoreMIDI, not
-through the DAW, so they need no routing and work in both VST3 and CLAP. It
-finds the MiniLab by name, picks it up within a couple of seconds of being
+Patina sends the setup and the pad lights straight to the MiniLab over
+CoreMIDI, not through the DAW, so they need no routing and work in both VST3 and CLAP. It
+finds the MiniLab by name, picks it up within a second or two of being
 plugged in, and turns the lights off when the plugin closes. With several
 Patina instances open, the one you touched last wins.
-
-## Keep it
-
-**set up MiniLab** changes the device’s current settings. To keep them
-through a power cycle or a memory change, open MCC, **Recall From** the
-device, then **Store To** one of its memories. Pressing **set up MiniLab**
-again works too.
 
 ## In REAPER
 
