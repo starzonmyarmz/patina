@@ -2,7 +2,7 @@
 //! so the lights work in VST3 and need no routing in the DAW.
 
 use crate::controls::Controls;
-use crate::minilab::{lights, pad_color, Color, SysEx, LIGHTS};
+use crate::minilab::{lights, pad_color, setup, Color, SysEx, LIGHTS};
 use crate::params::ThousandParams;
 use crate::ratings::Verdict;
 use midir::{MidiOutput, MidiOutputConnection};
@@ -12,6 +12,10 @@ use std::time::{Duration, Instant};
 const DEVICE: &str = "MiniLab";
 const POLL: Duration = Duration::from_millis(30);
 const RECONNECT: Duration = Duration::from_secs(2);
+
+pub fn minilab_connected() -> bool {
+    MidiOutput::new("Patina").is_ok_and(|out| out.ports().iter().any(|p| out.port_name(p).is_ok_and(|n| n.contains(DEVICE))))
+}
 
 fn connect() -> Option<MidiOutputConnection> {
     let out = MidiOutput::new("Patina").ok()?;
@@ -48,6 +52,10 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
             }
             if let Some(conn) = &mut connection {
                 let mut messages: Vec<SysEx> = Vec::new();
+                if controls.take_setup() {
+                    messages.extend(setup(controls.knob_mode()));
+                    sent = [None; LIGHTS];
+                }
                 let audition = controls.audition().then(|| verdict.get(&params, &controls));
                 for (i, color) in lights(controls.page(), audition).into_iter().enumerate() {
                     if sent[i] != Some(color) {

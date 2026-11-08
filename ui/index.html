@@ -592,9 +592,11 @@
         <option value="2">Relative #2 (0 = still)</option>
         <option value="3">Relative #3 (16 = still)</option>
       </select></label>
-      <p class="note">Match the encoder mode set in MIDI Control Center. Knobs send CC 102–117 and follow the page on screen. Bank 1 pads send CC 20–27: six pages, then previous and next preset.</p>
-      <p class="note">In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
+      <p class="note">Knobs follow the page on screen; hold knob 1 or 9 to turn finer. Bank 1 pads pick the page, then previous and next preset. In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
+      <p class="note">Set up MiniLab writes these settings and the knob mode to the device, replacing its current ones.</p>
+      <p class="note" id="minilab-note" role="status"></p>
       <div class="buttons">
+        <button class="key" type="button" id="setup-minilab">set up MiniLab</button>
         <button class="key" type="submit" id="setup-done">done</button>
       </div>
     </form>
@@ -720,6 +722,9 @@
         return;
       case "settings":
         $("knob-mode").value = String(msg.knobMode);
+        return;
+      case "minilabSetup":
+        $("minilab-note").textContent = msg.found ? "Sent to the MiniLab." : "Couldn’t find the MiniLab. Plug it in and try again.";
         return;
       case "error":
         showToast(msg.message);
@@ -1180,6 +1185,7 @@
   $("save").addEventListener("click", openSave);
   $("setup").addEventListener("click", () => {
     if (devices) bridge({ type: "devices" });
+    $("minilab-note").textContent = "";
     $("setup-dialog").showModal();
   });
 
@@ -1260,6 +1266,7 @@
     if (devicesChanged()) bridge({ type: "switchDevices", output: $("audio-output").value || null, midiInput: $("midi-input").value || null });
   });
   $("knob-mode").addEventListener("change", (e) => bridge({ type: "knobMode", mode: Number(e.target.value) }));
+  $("setup-minilab").addEventListener("click", () => bridge({ type: "setupMinilab" }));
   $("save-name").addEventListener("input", updateSaveNote);
   $("save-cancel").addEventListener("click", () => $("save-dialog").close());
   document.querySelector("#save-dialog form").addEventListener("submit", (e) => {
@@ -1720,6 +1727,9 @@
           }
           case "nextUnrated":
             step((q) => !q.user && !q.rating);
+            return;
+          case "setupMinilab":
+            send({ type: "minilabSetup", found: true });
             return;
           case "knobMode":
             state.knobMode = msg.mode;

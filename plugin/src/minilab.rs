@@ -107,10 +107,55 @@ fn set(param: u8, control: u8, value: u8) -> SysEx {
     [0xF0, 0x00, 0x20, 0x6B, 0x7F, 0x42, 0x02, 0x00, param, control, value, 0xF7]
 }
 
+const MODE: u8 = 0x01;
+const CHANNEL: u8 = 0x02;
+const NUMBER: u8 = 0x03;
+const MIN: u8 = 0x04;
+const MAX: u8 = 0x05;
+const BEHAVIOUR: u8 = 0x06;
 const COLOR: u8 = 0x10;
 
+const MODE_CONTROL: u8 = 0x01;
+const MODE_SWITCHED: u8 = 0x08;
+const MODE_NOTE: u8 = 0x09;
+const GLOBAL_CHANNEL: u8 = 0x41;
+const GATE: u8 = 0x01;
+
+/// SysEx IDs of knobs 1–16.
+const KNOB_IDS: [u8; KNOBS] = [0x30, 0x01, 0x02, 0x09, 0x0B, 0x0C, 0x0D, 0x0E, 0x33, 0x03, 0x04, 0x0A, 0x05, 0x06, 0x07, 0x08];
+/// Knobs 1 and 9 turned with Shift held.
+const SHIFT_KNOB_IDS: [u8; 2] = [0x32, 0x35];
+const CLICK_IDS: [u8; CLICKS as usize] = [0x31, 0x34];
 /// Pads 1–16: bank 1, then bank 2.
 const PAD_FIRST_ID: u8 = 0x70;
+
+/// Writes the setup in docs/minilab-setup.md to the MiniLab's current
+/// settings.
+pub fn setup(mode: KnobMode) -> Vec<SysEx> {
+    let mut out = Vec::new();
+    let mut control = |id: u8, mode: u8, number: u8, behaviour: u8| {
+        out.extend([set(MODE, id, mode), set(CHANNEL, id, GLOBAL_CHANNEL), set(NUMBER, id, number), set(BEHAVIOUR, id, behaviour)]);
+    };
+    for (i, id) in KNOB_IDS.into_iter().enumerate() {
+        control(id, MODE_CONTROL, KNOB_FIRST_CC + i as u8, mode as u8);
+    }
+    for (i, id) in SHIFT_KNOB_IDS.into_iter().enumerate() {
+        control(id, MODE_CONTROL, KNOB_FIRST_CC + 8 * i as u8, mode as u8);
+    }
+    for (i, id) in CLICK_IDS.into_iter().enumerate() {
+        control(id, MODE_SWITCHED, CLICK_FIRST_CC + i as u8, GATE);
+    }
+    for i in 0..PADS {
+        control(PAD_FIRST_ID + i, MODE_SWITCHED, PAD_FIRST_CC + i, GATE);
+    }
+    for i in 0..PADS {
+        control(PAD_FIRST_ID + PADS + i, MODE_NOTE, RATING_FIRST_NOTE + i, GATE);
+    }
+    for id in CLICK_IDS.into_iter().chain((0..PADS).map(|i| PAD_FIRST_ID + i)) {
+        out.extend([set(MIN, id, 0), set(MAX, id, 127)]);
+    }
+    out
+}
 
 /// The pad colors the MK2 can show. It has no brightness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,6 +228,19 @@ mod tests {
         assert_eq!(classify(1, 127, m), None);
         assert_eq!(classify(118, 127, m), Some(Control::Click { index: 0, down: true }));
         assert_eq!(classify(119, 0, m), Some(Control::Click { index: 1, down: false }));
+    }
+
+    #[test]
+    fn setup_gives_each_control_its_own_message() {
+        let messages = setup(KnobMode::Relative2);
+        assert!(messages.iter().all(|m| m[..8] == [0xF0, 0x00, 0x20, 0x6B, 0x7F, 0x42, 0x02, 0x00] && m[11] == 0xF7));
+        let number = |id| messages.iter().find(|m| m[8] == NUMBER && m[9] == id).map(|m| m[10]);
+        assert_eq!(number(0x30), Some(102));
+        assert_eq!(number(0x08), Some(117));
+        assert_eq!(number(0x34), Some(119));
+        assert_eq!(number(0x77), Some(27));
+        assert_eq!(number(0x7F), Some(51));
+        assert!(messages.iter().filter(|m| m[8] == BEHAVIOUR && KNOB_IDS.contains(&m[9])).all(|m| m[10] == 2));
     }
 
     #[test]

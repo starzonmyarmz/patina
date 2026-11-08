@@ -28,6 +28,7 @@ pub struct Controls {
     knob_mode: AtomicU8,
     /// Knobs 1 and 9, while clicked.
     held: [AtomicBool; CLICKS as usize],
+    setup_requested: AtomicBool,
     /// Taken on initialize. Cleared on deactivate: the context holds the
     /// plugin wrapper, which owns us.
     context: Mutex<Option<Arc<dyn GuiContext>>>,
@@ -55,6 +56,7 @@ impl Controls {
             pending: AtomicBool::new(false),
             knob_mode: AtomicU8::new(mode as u8),
             held: Default::default(),
+            setup_requested: AtomicBool::new(false),
             context: Mutex::new(None),
             library: Mutex::new(library),
             order: Mutex::new(Vec::new()),
@@ -84,6 +86,15 @@ impl Controls {
     pub fn set_knob_mode(&self, mode: KnobMode) {
         self.knob_mode.store(mode as u8, Ordering::Relaxed);
         let _ = self.library().set_knob_mode(mode as u8);
+    }
+
+    /// Asks the lights thread to write the MiniLab setup to the device.
+    pub fn request_setup(&self) {
+        self.setup_requested.store(true, Ordering::Release);
+    }
+
+    pub fn take_setup(&self) -> bool {
+        self.setup_requested.swap(false, Ordering::AcqRel)
     }
 
     fn fine(&self) -> bool {
