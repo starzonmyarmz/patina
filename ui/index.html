@@ -592,7 +592,7 @@
         <option value="2">Relative #2 (0 = still)</option>
         <option value="3">Relative #3 (16 = still)</option>
       </select></label>
-      <p class="note">Knobs follow the page on screen; hold knob 1 or 9 to turn finer. Bank 1 pads pick the page, then next preset. In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
+      <p class="note">Knobs follow the page on screen; hold knob 1 or 9 to turn finer. Bank 1 pads pick the page; pad 8 browses, with knob 1 stepping through presets and knob 2 through filters. In audition mode (Shift A), bank 2 pads rate presets: keep, tweak, cut, clear, replay, next unrated, previous, next.</p>
       <p class="note">Patina writes these settings and the knob mode to the MiniLab whenever it connects, replacing the device’s own.</p>
       <div class="buttons">
         <button class="key" type="submit" id="setup-done">done</button>
@@ -717,6 +717,14 @@
         return;
       case "page":
         if (msg.index !== pageIndex) showPage(msg.index, false);
+        return;
+      case "browse":
+        if (msg.on && $("browser").hidden) openBrowser(false);
+        else if (!msg.on && !$("browser").hidden) closeBrowser(false);
+        return;
+      case "filter":
+        filter.category = msg.filter;
+        renderBrowser();
         return;
       case "settings":
         $("knob-mode").value = String(msg.knobMode);
@@ -1032,6 +1040,7 @@
       b.append(label, n);
       b.addEventListener("click", () => {
         filter.category = value;
+        bridge({ type: "filter", filter: value });
         renderBrowser();
       });
       return b;
@@ -1116,22 +1125,26 @@
     loadPreset(list[next].key);
   }
 
-  function openBrowser() {
+  function openBrowser(notify = true) {
     $("browser").hidden = false;
     $("browse").setAttribute("aria-expanded", "true");
-    $("search").focus();
+    if (notify) {
+      bridge({ type: "browse", on: true });
+      $("search").focus();
+    }
     renderBrowser();
   }
 
-  function closeBrowser() {
+  function closeBrowser(notify = true) {
     $("browser").hidden = true;
     $("browse").setAttribute("aria-expanded", "false");
-    $("browse").focus();
+    if (notify) bridge({ type: "browse", on: false });
+    if (notify || $("browser").contains(document.activeElement)) $("browse").focus();
   }
 
   $("browse").addEventListener("click", () => ($("browser").hidden ? openBrowser() : closeBrowser()));
-  $("preset-button").addEventListener("click", openBrowser);
-  $("close-browser").addEventListener("click", closeBrowser);
+  $("preset-button").addEventListener("click", () => openBrowser());
+  $("close-browser").addEventListener("click", () => closeBrowser());
   $("prev").addEventListener("click", () => stepPreset(-1));
   $("next").addEventListener("click", () => stepPreset(1));
 

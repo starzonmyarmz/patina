@@ -98,8 +98,9 @@ plugin doesn't clear one already merged into the repo: edit
 
 Patina programs the MiniLab itself whenever it connects; see
 [docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on
-screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and step to
-the next preset, and light up to show the page.
+screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and light up
+to show the page. Pad 8 turns knob 1 into a preset dial and knob 2 into the
+browser's filter.
 
 ## Working on the UI
 

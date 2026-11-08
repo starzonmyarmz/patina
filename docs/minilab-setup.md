@@ -36,11 +36,19 @@ Every control sends on the MiniLab’s global channel.
 | 5 | 〃 | 24 | FX page | 〃 |
 | 6 | 〃 | 25 | Macro page | 〃 |
 | 7 | 〃 | 26 | Arp page | 〃 |
-| 8 | 〃 | 27 | Next preset, wrapping at the end | Green |
+| 8 | 〃 | 27 | Browse presets, or back to the page | Green, white while browsing |
 
-The pads act on press (any value above 0). Next preset steps through the
-presets the browser is showing, so filter to "Pad" or your favorites first
-to step through just those.
+The pads act on press (any value above 0). A page pad also ends browsing.
+
+While browsing, the page pads are all blue and only two knobs work:
+
+- **Knob 1** steps through the presets the browser shows, loading each
+  one, and wraps at the ends.
+- **Knob 2** picks the browser's filter (all, favorites, user, then each
+  category) and loads its first preset.
+
+Pad 8 and the **browse** key in the plugin window do the same thing, and
+the window shows the list while browsing.
 
 ## Pads, bank 2
 

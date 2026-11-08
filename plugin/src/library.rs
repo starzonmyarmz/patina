@@ -114,6 +114,36 @@ impl Library {
         self.get(&key).is_some().then_some(key)
     }
 
+    /// The browser's filters, in its order: all, favorites, user, unrated
+    /// (in audition mode), then each category.
+    pub fn filters(&self, audition: bool) -> Vec<String> {
+        let mut out: Vec<String> = ["all", "favorites", "user"].map(String::from).into();
+        if audition {
+            out.push("unrated".into());
+        }
+        for (_, p, _) in self.sorted() {
+            if !out[3..].contains(&p.category) {
+                out.push(p.category.clone());
+            }
+        }
+        out
+    }
+
+    /// The keys `filter` shows, in browser order.
+    pub fn filtered(&self, filter: &str) -> Vec<String> {
+        self.sorted()
+            .into_iter()
+            .filter(|(key, p, source)| match filter {
+                "all" => true,
+                "favorites" => self.state.favorites.contains(key),
+                "user" => *source == Source::User,
+                "unrated" => *source != Source::User && self.rating(key).is_none(),
+                category => p.category == category,
+            })
+            .map(|(key, ..)| key)
+            .collect()
+    }
+
     pub fn listing(&self) -> Vec<Value> {
         self.sorted()
             .into_iter()
@@ -251,6 +281,22 @@ mod tests {
         assert_eq!(listed["rating"], "cut");
         assert!(lib.rate("user/Mine", None).is_err());
         assert!(lib.rate("factory/No such preset", None).is_err());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn filters_match_the_browser() {
+        let (root, mut lib) = temp_library("filters");
+        let filters = lib.filters(false);
+        assert_eq!(filters[..4], ["all", "favorites", "user", "Bass"]);
+        assert!(!filters.contains(&"unrated".to_string()));
+        assert_eq!(lib.filters(true)[3], "unrated");
+        assert_eq!(lib.filtered("all"), lib.keys());
+        assert!(lib.filtered("favorites").is_empty());
+        let key = lib.filtered("Pad")[2].clone();
+        lib.set_favorite(&key, true).unwrap();
+        assert_eq!(lib.filtered("favorites"), [key]);
+        assert!(lib.filtered("Pad").iter().all(|k| lib.get(k).unwrap().0.category == "Pad"));
         let _ = std::fs::remove_dir_all(root);
     }
 

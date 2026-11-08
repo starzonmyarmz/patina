@@ -6,7 +6,8 @@ use crate::ratings::Verdict;
 pub const KNOB_FIRST_CC: u8 = 102;
 pub const PAD_FIRST_CC: u8 = 20;
 pub const PADS: u8 = 8;
-pub const NEXT_PAD: usize = 7;
+/// Switches the knobs between the page and browsing presets.
+pub const BROWSE_PAD: usize = 7;
 /// Knobs 1 and 9 send these while clicked. The factory CCs, 113 and 115,
 /// fall among the knobs'.
 pub const CLICK_FIRST_CC: u8 = 118;
@@ -176,14 +177,15 @@ pub fn pad_color(pad: usize, color: Color) -> SysEx {
     set(COLOR, PAD_FIRST_ID + pad as u8, color as u8)
 }
 
-/// Bank 1 shows the page; bank 2 shows the rating pads in audition mode.
-/// A rated preset lights only its verdict's pad.
-pub fn lights(page: usize, audition: Option<Option<Verdict>>) -> [Color; LIGHTS] {
+/// Bank 1 shows the page, or the browse pad while browsing; bank 2 shows
+/// the rating pads in audition mode. A rated preset lights only its
+/// verdict's pad.
+pub fn lights(page: usize, browsing: bool, audition: Option<Option<Verdict>>) -> [Color; LIGHTS] {
     let mut out = [Color::Off; LIGHTS];
-    for (i, light) in out[..NEXT_PAD].iter_mut().enumerate() {
-        *light = if i == page { Color::White } else { Color::Blue };
+    for (i, light) in out[..BROWSE_PAD].iter_mut().enumerate() {
+        *light = if i == page && !browsing { Color::White } else { Color::Blue };
     }
-    out[NEXT_PAD] = Color::Green;
+    out[BROWSE_PAD] = if browsing { Color::White } else { Color::Green };
     let Some(verdict) = audition else { return out };
     let bank = &mut out[PADS as usize..];
     for (light, pad) in bank.iter_mut().zip(RatingPad::ALL) {
@@ -221,7 +223,7 @@ mod tests {
         assert_eq!(classify(120, 65, m), None);
         assert_eq!(classify(102, 64, m), None);
         assert_eq!(classify(20, 127, m), Some(Control::Pad(0)));
-        assert_eq!(classify(27, 127, m), Some(Control::Pad(NEXT_PAD)));
+        assert_eq!(classify(27, 127, m), Some(Control::Pad(BROWSE_PAD)));
         assert_eq!(classify(27, 0, m), None);
         assert_eq!(classify(1, 127, m), None);
         assert_eq!(classify(118, 127, m), Some(Control::Click { index: 0, down: true }));
@@ -243,17 +245,21 @@ mod tests {
 
     #[test]
     fn lights_show_the_page_and_the_verdict() {
-        let browsing = lights(2, None);
-        assert_eq!(browsing[2], Color::White);
-        assert_eq!(browsing[0], Color::Blue);
-        assert_eq!(browsing[6..8], [Color::Blue, Color::Green]);
-        assert!(browsing[8..].iter().all(|c| *c == Color::Off));
+        let paged = lights(2, false, None);
+        assert_eq!(paged[2], Color::White);
+        assert_eq!(paged[0], Color::Blue);
+        assert_eq!(paged[6..8], [Color::Blue, Color::Green]);
+        assert!(paged[8..].iter().all(|c| *c == Color::Off));
 
-        let unrated = lights(0, Some(None));
+        let browsing = lights(2, true, None);
+        assert!(browsing[..7].iter().all(|c| *c == Color::Blue));
+        assert_eq!(browsing[7], Color::White);
+
+        let unrated = lights(0, false, Some(None));
         assert_eq!(unrated[8..11], [Color::Green, Color::Yellow, Color::Red]);
         assert_eq!(unrated[11], Color::Off);
 
-        let cut = lights(0, Some(Some(Verdict::Cut)));
+        let cut = lights(0, false, Some(Some(Verdict::Cut)));
         assert_eq!(cut[8..12], [Color::Off, Color::Off, Color::Red, Color::White]);
     }
 

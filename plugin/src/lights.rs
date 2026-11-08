@@ -82,7 +82,7 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
                     set_up = Some(mode);
                 }
                 let audition = controls.audition().then(|| verdict.get(&params, &controls));
-                for (i, color) in lights(controls.page(), audition).into_iter().enumerate() {
+                for (i, color) in lights(controls.page(), controls.browsing(), audition).into_iter().enumerate() {
                     if sent[i] != Some(color) {
                         messages.push(pad_color(i, color));
                         sent[i] = Some(color);

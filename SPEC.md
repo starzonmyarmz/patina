@@ -79,9 +79,17 @@ Each page fills the 2×8 grid, in titled sections. Slots marked `—` are empty.
 | FX | distortion, bitcrush · chorus mix, rate · delay time, feedback, mix · LFO 3 →amp (tremolo) | reverb size, mix · EQ low, mid, high · compressor, width, limiter |
 | Macro | macros 1–8 | sync and division for LFO 1, LFO 2, LFO 3, delay |
 
-The seven page names fit pad bank 1 with one pad left for next preset.
+The seven page names fit pad bank 1 with one pad left for browsing.
 `plugin/src/layout.rs` is authoritative; a test checks that every parameter is
 on exactly one page.
+
+### Browsing
+
+Pad 8 switches the knobs between the page and browsing, like the editor's
+**browse** key, and the two stay in step. While browsing, knob 1 steps
+through the presets the browser shows, loading each, and knob 2 picks the
+browser's filter and loads its first preset. Four encoder ticks make one
+step, as for menus. A page pad ends browsing.
 
 ## Arpeggiator
 
@@ -152,8 +160,7 @@ such as gate and swing.
 The arp gets a seventh page, **Arp**. Row 1 has the eight parameters in the
 table order. Row 2 is empty for now.
 
-Pad 7 opens Arp and pad 8 is next preset, wrapping at the end. Previous
-preset is in the editor (‹ and the [ key). The app's 1–7 keys switch pages.
+Pad 7 opens Arp. The app's 1–7 keys switch pages.
 
 ## Presets
 

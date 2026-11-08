@@ -67,6 +67,8 @@ pub struct Bridge {
     sent: [f32; COUNT],
     sent_session: Value,
     sent_page: usize,
+    sent_browsing: Option<bool>,
+    seen_filter: Option<u32>,
     seen_generation: u32,
     sent_audition: Option<bool>,
     sent_tempo: Option<f32>,
@@ -83,6 +85,8 @@ impl Bridge {
             sent: [f32::NAN; COUNT],
             sent_session: Value::Null,
             sent_page: usize::MAX,
+            sent_browsing: None,
+            seen_filter: None,
             seen_generation: u32::MAX,
             sent_audition: None,
             sent_tempo: None,
@@ -99,6 +103,8 @@ impl Bridge {
                 self.sent = [f32::NAN; COUNT];
                 self.sent_session = Value::Null;
                 self.sent_page = usize::MAX;
+                self.sent_browsing = None;
+                self.seen_filter = None;
                 self.sent_audition = None;
                 self.sent_tempo = None;
                 self.seen_ratings = self.controls.ratings_generation();
@@ -129,6 +135,12 @@ impl Bridge {
                 }
             }
             ("page", _) => self.controls.set_page(msg["index"].as_u64().unwrap_or(0) as usize),
+            ("browse", _) => {
+                let on = msg["on"].as_bool().unwrap_or(false);
+                self.controls.set_browsing(on);
+                self.sent_browsing = Some(on);
+            }
+            ("filter", _) => self.controls.set_filter(msg["filter"].as_str().unwrap_or("all")),
             ("order", _) => {
                 let keys = msg["keys"].as_array().map(|k| k.iter().filter_map(|k| k.as_str().map(String::from)).collect());
                 self.controls.set_order(keys.unwrap_or_default());
@@ -225,6 +237,16 @@ impl Bridge {
         if page != self.sent_page {
             self.sent_page = page;
             out.push(json!({ "type": "page", "index": page }));
+        }
+        let browsing = self.controls.browsing();
+        if self.sent_browsing != Some(browsing) {
+            self.sent_browsing = Some(browsing);
+            out.push(json!({ "type": "browse", "on": browsing }));
+        }
+        let filter = self.controls.filter_generation();
+        if self.seen_filter != Some(filter) {
+            self.seen_filter = Some(filter);
+            out.push(json!({ "type": "filter", "filter": self.controls.filter() }));
         }
         let generation = self.params.session_generation();
         if values_changed || generation != self.seen_generation {
@@ -460,7 +482,7 @@ mod tests {
         let (root, mut bridge, mut host) = setup("ready");
         let out = send(&mut bridge, &mut host, json!({ "type": "ready" }));
         let types: Vec<_> = out.iter().map(|m| m["type"].as_str().unwrap()).collect();
-        assert_eq!(types, ["init", "presets", "settings", "values", "audition", "page", "session"]);
+        assert_eq!(types, ["init", "presets", "settings", "values", "audition", "page", "browse", "filter", "session"]);
         assert_eq!(out[0]["params"].as_array().unwrap().len(), COUNT);
         assert_eq!(out[3]["values"].as_array().unwrap().len(), COUNT);
         let _ = std::fs::remove_dir_all(root);
@@ -580,6 +602,26 @@ mod tests {
         let mut out = Vec::new();
         bridge.poll(&host, false, &mut out);
         assert_eq!(out, [json!({ "type": "page", "index": 1 })]);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn browsing_syncs_both_ways() {
+        let (root, mut bridge, mut host) = setup("browse");
+        send(&mut bridge, &mut host, json!({ "type": "ready" }));
+        let out = send(&mut bridge, &mut host, json!({ "type": "browse", "on": true }));
+        assert!(bridge.controls.browsing());
+        assert!(!out.iter().any(|m| m["type"] == "browse"));
+        send(&mut bridge, &mut host, json!({ "type": "filter", "filter": "Pad" }));
+        assert_eq!(bridge.controls.filter(), "Pad");
+
+        bridge.controls.midi_cc(103, 64 + 4);
+        bridge.controls.run_with(&bridge.params.clone(), &mut host);
+        bridge.controls.midi_cc(27, 127);
+        let mut out = Vec::new();
+        bridge.poll(&host, false, &mut out);
+        assert!(out.contains(&json!({ "type": "browse", "on": false })));
+        assert!(out.contains(&json!({ "type": "filter", "filter": "Keys" })));
         let _ = std::fs::remove_dir_all(root);
     }
 

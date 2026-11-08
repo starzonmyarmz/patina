@@ -173,6 +173,6 @@ mod tests {
 
     #[test]
     fn pages_fit_pad_bank_one() {
-        assert_eq!(PAGES.len(), crate::minilab::NEXT_PAD);
+        assert_eq!(PAGES.len(), crate::minilab::BROWSE_PAD);
     }
 }
