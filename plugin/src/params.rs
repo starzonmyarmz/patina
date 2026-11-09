@@ -432,18 +432,7 @@ impl Values for PlainValues {
 
 unsafe impl Params for ThousandParams {
     fn param_map(&self) -> Vec<(String, ParamPtr, String)> {
-        SPECS
-            .iter()
-            .zip(&self.slots)
-            .map(|(spec, slot)| {
-                let ptr = match slot {
-                    Slot::Float(p) => p.as_ptr(),
-                    Slot::Int(p) => p.as_ptr(),
-                    Slot::Bool(p) => p.as_ptr(),
-                };
-                (spec.id.to_string(), ptr, spec.group.to_string())
-            })
-            .collect()
+        Pid::ALL.iter().map(|&pid| (pid.spec().id.to_string(), self.ptr(pid), pid.spec().group.to_string())).collect()
     }
 
     fn serialize_fields(&self) -> BTreeMap<String, String> {
