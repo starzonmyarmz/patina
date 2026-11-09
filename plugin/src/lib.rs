@@ -38,7 +38,7 @@ pub struct Patina {
     phrase_events: Events,
     phrase_seen: u32,
     restored: bool,
-    lights: bool,
+    lights: Option<lights::Lights>,
 }
 
 impl Default for Patina {
@@ -55,7 +55,7 @@ impl Default for Patina {
             phrase_events: Events::default(),
             phrase_seen: u32::MAX,
             restored: false,
-            lights: false,
+            lights: None,
         }
     }
 }
@@ -189,8 +189,8 @@ impl Plugin for Patina {
         context: &mut impl ActivateContext<Self>,
     ) -> bool {
         self.controls.keep_context(|| context.gui_context());
-        if !std::mem::replace(&mut self.lights, true) {
-            lights::spawn(Arc::downgrade(&self.params), Arc::downgrade(&self.controls));
+        if self.lights.is_none() {
+            self.lights = Some(lights::spawn(Arc::downgrade(&self.params), Arc::downgrade(&self.controls)));
         }
         if app::get().is_some() && !std::mem::replace(&mut self.restored, true) {
             let gui = context.gui_context();

@@ -8,7 +8,9 @@ use crate::minilab::{lights, pad_color, setup, Color, SysEx, LIGHTS};
 use crate::params::ThousandParams;
 use crate::ratings::Verdict;
 use midir::{MidiOutput, MidiOutputConnection};
+use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
 use std::sync::Weak;
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 const DEVICE: &str = "MiniLab";
@@ -41,9 +43,26 @@ pub fn turn_off_now() {
     }
 }
 
-/// Runs until the plugin goes away, then turns the lights off.
-pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
-    let _ = std::thread::Builder::new().name("Patina lights".into()).spawn(move || {
+/// The lights thread. Dropping it stops the thread and waits for it, so it
+/// can't outlive the plugin's library being unloaded.
+pub struct Lights {
+    stop: Option<Sender<()>>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Drop for Lights {
+    fn drop(&mut self) {
+        self.stop.take();
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+/// Runs until stopped or the plugin goes away, then turns the lights off.
+pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) -> Lights {
+    let (stop, stopped) = channel::<()>();
+    let thread = std::thread::Builder::new().name("Patina lights".into()).spawn(move || {
         let mut connection: Option<MidiOutputConnection> = None;
         let mut checked = None::<Instant>;
         let mut sent: [Option<Color>; LIGHTS] = [None; LIGHTS];
@@ -93,12 +112,15 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) {
                 }
             }
             drop((params, controls));
-            std::thread::sleep(POLL);
+            if stopped.recv_timeout(POLL) != Err(RecvTimeoutError::Timeout) {
+                break;
+            }
         }
         if let Some(mut conn) = connection {
             turn_off(&mut conn);
         }
     });
+    Lights { stop: Some(stop), thread: thread.ok() }
 }
 
 /// The loaded preset's verdict, looked up again only when the preset or a
