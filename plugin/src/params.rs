@@ -1,7 +1,7 @@
 use crate::audition::phrase_for;
 use crate::macros::MacroMatrix;
 use crate::presets::{matrix_from, Session};
-use nih_plug::prelude::*;
+use nice_plug::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -221,7 +221,7 @@ impl Spec {
         }
     }
 
-    /// Plain value to 0..1, matching nih-plug's own mapping.
+    /// Plain value to 0..1, matching nice-plug's own mapping.
     pub fn normalize(&self, plain: f32) -> f32 {
         let (min, max) = self.bounds();
         let linear = ((plain.clamp(min, max) - min) / (max - min)).clamp(0.0, 1.0);
@@ -470,7 +470,7 @@ mod tests {
     }
 
     #[test]
-    fn normalization_matches_nih_plug() {
+    fn normalization_matches_nice_plug() {
         let params = ThousandParams::default();
         for (spec, slot) in SPECS.iter().zip(&params.slots) {
             for step in 0..=20 {

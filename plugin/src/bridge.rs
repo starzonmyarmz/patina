@@ -9,7 +9,8 @@ use crate::macros::MACROS;
 use crate::params::{Kind, Pid, PlainValues, ThousandParams, Values, COUNT};
 use crate::presets::{Preset, Session, Source};
 use crate::ratings::Verdict;
-use nih_plug::prelude::{FloatRange, GuiContext};
+use nice_plug::context::gui::GuiContext;
+use nice_plug::prelude::FloatRange;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -26,12 +27,12 @@ pub trait Host {
 /// The host's GUI context: sets go to the host, which records them as
 /// automation and passes them back to the plugin.
 pub struct ContextHost<'a> {
-    context: &'a dyn GuiContext,
+    context: &'a GuiContext,
     params: &'a ThousandParams,
 }
 
 impl<'a> ContextHost<'a> {
-    pub fn new(context: &'a dyn GuiContext, params: &'a ThousandParams) -> Self {
+    pub fn new(context: &'a GuiContext, params: &'a ThousandParams) -> Self {
         Self { context, params }
     }
 }

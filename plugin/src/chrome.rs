@@ -2,10 +2,10 @@
 //! edge under the traffic lights. The plugin's window belongs to the host
 //! and is left alone.
 
-use baseview::Window;
+use baseview::WindowContext;
 use objc::runtime::{Object, YES};
 use objc::{msg_send, sel, sel_impl};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 const FULL_SIZE_CONTENT_VIEW: u64 = 1 << 15;
 const TITLE_HIDDEN: i64 = 1;
@@ -31,18 +31,15 @@ struct Rect {
     size: Size,
 }
 
-fn ns_window(window: &Window) -> Option<*mut Object> {
-    let RawWindowHandle::AppKit(handle) = window.raw_window_handle() else { return None };
-    let view = handle.ns_view as *mut Object;
-    if view.is_null() {
-        return None;
-    }
+fn ns_window(window: &WindowContext) -> Option<*mut Object> {
+    let RawWindowHandle::AppKit(handle) = window.window_handle().ok()?.as_raw() else { return None };
+    let view = handle.ns_view.as_ptr() as *mut Object;
     let ns_window: *mut Object = unsafe { msg_send![view, window] };
     (!ns_window.is_null()).then_some(ns_window)
 }
 
 /// Hides the title bar and keeps the content at `size`.
-pub fn hide_title_bar(window: &Window, size: (u32, u32)) {
+pub fn hide_title_bar(window: &WindowContext, size: (u32, u32)) {
     let Some(w) = ns_window(window) else { return };
     unsafe {
         let mask: u64 = msg_send![w, styleMask];
@@ -57,7 +54,7 @@ pub fn hide_title_bar(window: &Window, size: (u32, u32)) {
 /// centered `center` points from its top, growing the title bar to fit.
 /// AppKit lays them out again on some window changes, so this runs every
 /// frame and only touches frames that moved.
-pub fn place_traffic_lights(window: &Window, left: f64, center: f64) {
+pub fn place_traffic_lights(window: &WindowContext, left: f64, center: f64) {
     let Some(w) = ns_window(window) else { return };
     unsafe {
         let buttons: [*mut Object; 3] = [0u64, 1, 2].map(|kind| msg_send![w, standardWindowButton: kind]);
@@ -91,7 +88,7 @@ pub fn place_traffic_lights(window: &Window, left: f64, center: f64) {
 }
 
 /// Moves the window by a drag on the page, in points with y down.
-pub fn move_by(window: &Window, dx: f64, dy: f64) {
+pub fn move_by(window: &WindowContext, dx: f64, dy: f64) {
     let Some(w) = ns_window(window) else { return };
     unsafe {
         let frame: Rect = msg_send![w, frame];

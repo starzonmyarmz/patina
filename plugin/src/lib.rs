@@ -19,7 +19,8 @@ pub mod ratings;
 use arp::Arp;
 use audition::{Event, Events, Player};
 use engine::{Engine, Transport, CHUNK};
-use nih_plug::prelude::*;
+use nice_plug::midi::Key;
+use nice_plug::prelude::*;
 use controls::Controls;
 use library::Library;
 use params::ThousandParams;
@@ -69,10 +70,10 @@ impl Patina {
         let engine = &mut self.engine;
         let out = &mut |e| play(engine, e);
         match event {
-            NoteEvent::NoteOn { note, velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
-            NoteEvent::NoteOff { note, .. } if self.controls.midi_note(note, false) => {}
-            NoteEvent::NoteOn { note, velocity, .. } if velocity > 0.0 => self.arp.key_on(at, note, velocity, out),
-            NoteEvent::NoteOn { note, .. } | NoteEvent::NoteOff { note, .. } => self.arp.key_off(note, out),
+            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
+            NoteEvent::NoteOff { key: Key::Number(note), .. } if self.controls.midi_note(note, false) => {}
+            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. } if velocity > 0.0 => self.arp.key_on(at, note, velocity, out),
+            NoteEvent::NoteOn { key: Key::Number(note), .. } | NoteEvent::NoteOff { key: Key::Number(note), .. } => self.arp.key_off(note, out),
             NoteEvent::MidiPitchBend { value, .. } => self.engine.set_pitch_bend(value),
             NoteEvent::MidiChannelPressure { pressure, .. } => self.engine.set_aftertouch(pressure),
             NoteEvent::MidiCC { cc, value, .. } if self.controls.midi_cc(cc, (value * 127.0).round() as u8) => {}
@@ -157,6 +158,7 @@ impl Plugin for Patina {
     const MIDI_INPUT: MidiConfig = MidiConfig::MidiCCs;
     const SAMPLE_ACCURATE_AUTOMATION: bool = false;
 
+    type Editor = editor::WebEditor;
     type SysExMessage = ();
     type BackgroundTask = Task;
 
@@ -164,8 +166,8 @@ impl Plugin for Patina {
         self.params.clone()
     }
 
-    fn editor(&mut self, _executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        Some(Box::new(editor::WebEditor::new(self.params.clone(), self.controls.clone())))
+    fn editor(&mut self, _executor: AsyncExecutor<Self>) -> Option<editor::WebEditor> {
+        Some(editor::WebEditor::new(self.params.clone(), self.controls.clone()))
     }
 
     fn task_executor(&mut self) -> TaskExecutor<Self> {
@@ -180,11 +182,11 @@ impl Plugin for Patina {
         self.controls.drop_context();
     }
 
-    fn initialize(
+    fn activate(
         &mut self,
         _layout: &AudioIOLayout,
         buffer_config: &BufferConfig,
-        context: &mut impl InitContext<Self>,
+        context: &mut impl ActivateContext<Self>,
     ) -> bool {
         self.controls.keep_context(|| context.gui_context());
         if !std::mem::replace(&mut self.lights, true) {
@@ -192,7 +194,7 @@ impl Plugin for Patina {
         }
         if app::get().is_some() && !std::mem::replace(&mut self.restored, true) {
             let gui = context.gui_context();
-            let tempo = app::restore(&self.params, &mut bridge::ContextHost::new(&*gui, &self.params));
+            let tempo = app::restore(&self.params, &mut bridge::ContextHost::new(&gui, &self.params));
             self.controls.set_app_tempo(tempo.unwrap_or(controls::DEFAULT_TEMPO));
         }
         if self.engine.sample_rate() != buffer_config.sample_rate {
@@ -290,5 +292,5 @@ impl Vst3Plugin for Patina {
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[Vst3SubCategory::Instrument, Vst3SubCategory::Synth];
 }
 
-nih_export_clap!(Patina);
-nih_export_vst3!(Patina);
+nice_export_clap!(Patina);
+nice_export_vst3!(Patina);

@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["app", "plugin", "presetgen", "xtask"]
-exclude = ["vendor"]
 
 [workspace.package]
 version = "1.0.0"
@@ -14,9 +13,6 @@ strip = "symbols"
 inherits = "release"
 debug = true
 strip = "none"
-
-[patch."https://github.com/robbert-vdh/nih-plug"]
-nih_plug = { path = "vendor/nih_plug" }
 
 # Old objc-based crates message nil, which Objective-C allows but Rust's
 # debug-build null checks turn into aborts.

@@ -1,9 +1,9 @@
-//! Patina as a Mac app: the plugin run by nih-plug's standalone wrapper on
+//! Patina as a Mac app: the plugin run by nice-plug's standalone wrapper on
 //! CoreAudio, with the MiniLab (or the chosen port) as MIDI input.
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use midir::MidiInput;
-use nih_plug::wrapper::standalone::nih_export_standalone_with_args;
+use nice_plug::wrapper::standalone::nice_export_standalone_with_args;
 use patina::app::{App, Devices};
 use patina::Patina;
 use serde::{Deserialize, Serialize};
@@ -42,8 +42,13 @@ fn host() -> cpal::Host {
     cpal::host_from_id(cpal::HostId::CoreAudio).unwrap_or_else(|_| cpal::default_host())
 }
 
+/// The name nice-plug's standalone wrapper matches `--output-device` against.
+fn name(device: &cpal::Device) -> Option<String> {
+    device.description().ok().map(|d| d.name().to_string())
+}
+
 fn outputs() -> Vec<String> {
-    host().output_devices().map(|ds| ds.filter_map(|d| d.name().ok()).collect()).unwrap_or_default()
+    host().output_devices().map(|ds| ds.filter_map(|d| name(&d)).collect()).unwrap_or_default()
 }
 
 fn midi_inputs() -> Vec<String> {
@@ -60,7 +65,7 @@ fn choose(settings: &Settings) -> Devices {
         .output
         .clone()
         .filter(|o| outputs.contains(o))
-        .or_else(|| host().default_output_device().and_then(|d| d.name().ok()));
+        .or_else(|| host().default_output_device().and_then(|d| name(&d)));
     let midi_input = settings
         .midi_input
         .clone()
@@ -71,9 +76,9 @@ fn choose(settings: &Settings) -> Devices {
 }
 
 fn sample_rate(output: Option<&str>) -> u32 {
-    let device = host().output_devices().ok().and_then(|mut ds| ds.find(|d| d.name().ok().as_deref() == output));
+    let device = host().output_devices().ok().and_then(|mut ds| ds.find(|d| name(d).as_deref() == output));
     let device = device.or_else(|| host().default_output_device());
-    device.and_then(|d| d.default_output_config().ok()).map_or(48_000, |c| c.sample_rate().0)
+    device.and_then(|d| d.default_output_config().ok()).map_or(48_000, |c| c.sample_rate())
 }
 
 /// The `.app` bundle this binary runs from, if any.
@@ -126,7 +131,7 @@ fn main() {
         vec!["Patina".into(), "--backend".into(), "dummy".into()],
     ];
     for attempt in attempts {
-        if nih_export_standalone_with_args::<Patina, _>(attempt) {
+        if nice_export_standalone_with_args::<Patina, _>(attempt) {
             return;
         }
     }

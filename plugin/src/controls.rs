@@ -8,9 +8,9 @@ use crate::minilab::{classify, rating_pad, Control, KnobMode, RatingPad, BROWSE_
 use crate::params::{Pid, ThousandParams};
 use crate::presets::Preset;
 use crate::ratings::{Rating, Verdict};
-use nih_plug::prelude::GuiContext;
+use nice_plug::context::gui::GuiContext;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard};
 
 pub const TEMPO_RANGE: (f32, f32) = (40.0, 240.0);
 pub const DEFAULT_TEMPO: f32 = 120.0;
@@ -36,9 +36,8 @@ pub struct Controls {
     held: [AtomicBool; CLICKS as usize],
     /// Counts pad presses and releases, which repaint the pad on the device.
     pad_touches: AtomicU32,
-    /// Taken on initialize. Cleared on deactivate: the context holds the
-    /// plugin wrapper, which owns us.
-    context: Mutex<Option<Arc<dyn GuiContext>>>,
+    /// Taken on activate, cleared on deactivate.
+    context: Mutex<Option<GuiContext>>,
     library: Mutex<Library>,
     /// The browser's filtered order, which browsing steps through.
     order: Mutex<Vec<String>>,
@@ -172,7 +171,7 @@ impl Controls {
         self.app_tempo.store(bpm.to_bits(), Ordering::Relaxed);
     }
 
-    pub fn keep_context(&self, context: impl FnOnce() -> Arc<dyn GuiContext>) {
+    pub fn keep_context(&self, context: impl FnOnce() -> GuiContext) {
         let mut slot = lock(&self.context);
         if slot.is_none() {
             *slot = Some(context());
@@ -231,7 +230,7 @@ impl Controls {
     pub fn run(&self, params: &ThousandParams) {
         let context = lock(&self.context).clone();
         match context {
-            Some(context) => self.run_with(params, &mut ContextHost::new(&*context, params)),
+            Some(context) => self.run_with(params, &mut ContextHost::new(&context, params)),
             None => {
                 self.ticks.iter().for_each(|t| t.store(0, Ordering::Relaxed));
                 self.rating_pad.store(0, Ordering::Relaxed);

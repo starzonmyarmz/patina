@@ -1,9 +1,11 @@
 # Patina
 
 A polysynth plugin (VST3 + CLAP) for macOS and Windows, and a Mac app, in
-Rust, built with [nih-plug](https://github.com/robbert-vdh/nih-plug), patched
-in `vendor/` (see [vendor/README.md](vendor/README.md)). See
-[SPEC.md](SPEC.md) for the design and build order.
+Rust, built with [nice-plug](https://codeberg.org/BillyDM/nice-plug), pinned to
+[a fork](https://github.com/starzonmyarmz/nice-plug/tree/patina) that adds one
+commit: `ActivateContext::gui_context()`, so MIDI controllers can set
+parameters before the editor opens. See [SPEC.md](SPEC.md) for the design and
+build order.
 
 ![Patina’s editor showing the Gritty Dry Saw Lead preset](docs/screenshot-1.0.0.jpg)
 
@@ -145,7 +147,7 @@ same loudness, and checks that all macros at full stay clean.
 |---|---|
 | `plugin/src/params.rs` | The parameter table: IDs, ranges, defaults, JSFX slider mapping. Single source of truth. |
 | `plugin/src/engine/` | DSP: band-limited oscillators, filters, envelopes, LFOs, voices. |
-| `plugin/src/lib.rs` | nih-plug wrapper: MIDI handling, sample-accurate event splitting. |
+| `plugin/src/lib.rs` | nice-plug wrapper: MIDI handling, sample-accurate event splitting. |
 | `plugin/src/layout.rs` | Which parameter sits under each of the 16 knobs on each page. |
 | `plugin/src/library.rs` | Preset keys, favorites, saving and deleting user presets. |
 | `plugin/src/bridge.rs` | The editor's message protocol: values, presets, session, compare. |
@@ -158,6 +160,5 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |
 | `plugin/tests/engine.rs` | Offline render tests and the CPU benchmark. |
 | `presetgen/` | Factory bank generator and quality gate. |
-| `app/` | The Mac app: device choice, then nih-plug's standalone wrapper. |
+| `app/` | The Mac app: device choice, then nice-plug's standalone wrapper. |
 | `plugin/src/app.rs` | What the editor needs from the app: device lists, relaunch, saving the sound. |
-| `vendor/nih_plug/` | nih-plug with fixes for state loading and setting parameters without an editor. |
