@@ -1,7 +1,7 @@
 # Patina
 
 A polysynth plugin (VST3 + CLAP) for macOS and Windows, and a Mac app, in
-Rust, built with [nice-plug](https://codeberg.org/BillyDM/nice-plug), pinned to
+Rust, built with [nice-plug](https://codeberg.org/RustAudio/nice-plug), pinned to
 [a fork](https://github.com/starzonmyarmz/nice-plug/tree/patina) that adds one
 commit: `ActivateContext::gui_context()`, so MIDI controllers can set
 parameters before the editor opens. See [SPEC.md](SPEC.md) for the design and

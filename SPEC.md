@@ -8,7 +8,7 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 
 | Area | Decision |
 |---|---|
-| Formats | VST3 + CLAP via [nice-plug](https://codeberg.org/BillyDM/nice-plug). No AU, AAX or standalone. |
+| Formats | VST3 + CLAP via [nice-plug](https://codeberg.org/RustAudio/nice-plug). No AU, AAX or standalone. |
 | Platform | macOS, Apple Silicon only. Ad-hoc signed, installed by script. No notarization or installer. |
 | Engine | Same parameter set as the JSFX, better DSP. Presets carry over approximately, not bit-exactly. |
 | Tempo sync | LFOs and delay each have a free/sync toggle and a host-synced division. |
