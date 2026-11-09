@@ -2,7 +2,7 @@ use super::env::{Env, Stage};
 use super::filter::{fast_tanh, VoiceFilter};
 use super::osc::{self, Rng, Tables};
 use super::{Mod, Patch, MAX_UNISON};
-use std::f32::consts::{FRAC_PI_4, SQRT_2, TAU};
+use std::f32::consts::{FRAC_PI_4, LN_2, SQRT_2};
 
 const LN_1000: f32 = 6.907_755;
 
@@ -17,6 +17,7 @@ pub struct Voice {
     glide_freq: f32,
     drift: f32,
     pan: f32,
+    pan_gains: (f32, f32),
     amp: Env,
     flt: Env,
     modenv: Env,
@@ -45,6 +46,7 @@ impl Voice {
             glide_freq: 440.0,
             drift: 1.0,
             pan: 0.0,
+            pan_gains: (1.0, 1.0),
             amp: Env::default(),
             flt: Env::default(),
             modenv: Env::default(),
@@ -121,6 +123,7 @@ impl Voice {
         for u in 0..p.n2 {
             self.lvl2[u] = Tables::level_for(base * p.o2_ratio * p.r2[u]);
         }
+        self.pan_gains = pan_gains(self.pan);
     }
 
     #[inline]
@@ -179,7 +182,7 @@ impl Voice {
         }
 
         self.sub_phase = (self.sub_phase + nf * 0.5 * inv_sr).fract();
-        let sub = (TAU * self.sub_phase).sin();
+        let sub = t.read(osc::SINE, 0, self.sub_phase);
 
         let w = self.rng.bipolar();
         self.pink[0] = 0.99765 * self.pink[0] + w * 0.099_046;
@@ -196,7 +199,7 @@ impl Voice {
             + m.aftertouch * p.at_filter
             + (self.note as f32 - 60.0) / 60.0 * p.keytrack)
             .clamp(0.0, 1.0);
-        let target = (20.0 * (cn * LN_1000).exp() * (fe * p.fenv / 12.0).exp2()).clamp(20.0, sr * 0.45);
+        let target = (20.0 * (cn * LN_1000 + fe * p.fenv / 12.0 * LN_2).exp()).clamp(20.0, sr * 0.45);
         self.fc = if self.fc == 0.0 { target } else { self.fc + (target - self.fc) * p.fc_smooth };
 
         let x = if p.drive > 0.0 { fast_tanh(mix * (1.0 + p.drive * 3.0)) } else { mix };
@@ -204,8 +207,13 @@ impl Voice {
 
         let mut sig = out * amp * (1.0 - p.vel_amp + p.vel_amp * self.vel);
         sig *= (1.0 - p.lfo1_amp * (m.lfo[0] * 0.5 + 0.5) - p.lfo3_amp * (m.lfo[2] * 0.5 + 0.5)).max(0.0);
-        let pan = (self.pan + m.lfo[2] * p.lfo3_pan).clamp(-1.0, 1.0);
-        let angle = (pan + 1.0) * FRAC_PI_4;
-        (sig * angle.cos() * SQRT_2, sig * angle.sin() * SQRT_2)
+        let (gl, gr) = if p.lfo3_pan == 0.0 { self.pan_gains } else { pan_gains(self.pan + m.lfo[2] * p.lfo3_pan) };
+        (sig * gl, sig * gr)
     }
+}
+
+#[inline]
+fn pan_gains(pan: f32) -> (f32, f32) {
+    let angle = (pan.clamp(-1.0, 1.0) + 1.0) * FRAC_PI_4;
+    (angle.cos() * SQRT_2, angle.sin() * SQRT_2)
 }
