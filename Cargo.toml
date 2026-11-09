@@ -3,7 +3,7 @@ resolver = "2"
 members = ["app", "plugin", "presetgen", "xtask"]
 
 [workspace.package]
-version = "1.1.1"
+version = "1.1.2"
 
 [profile.release]
 lto = "thin"
