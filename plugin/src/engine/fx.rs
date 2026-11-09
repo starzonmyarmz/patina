@@ -75,6 +75,11 @@ impl FxPatch {
     }
 }
 
+/// Past Nyquist the design turns unstable, so the band stops just short of it.
+fn omega(freq: f32, sr: f32) -> f32 {
+    TAU * freq.min(sr * 0.45) / sr
+}
+
 /// RBJ cookbook biquad, normalized by a0.
 #[derive(Clone, Copy, Default)]
 pub struct BiquadCoeffs {
@@ -88,7 +93,7 @@ pub struct BiquadCoeffs {
 impl BiquadCoeffs {
     fn shelf(freq: f32, gain_db: f32, sr: f32, high: bool) -> Self {
         let a = 10f32.powf(gain_db / 40.0);
-        let w = TAU * freq / sr;
+        let w = omega(freq, sr);
         let (sin, cos) = w.sin_cos();
         let alpha = sin / 2.0 * 2f32.sqrt();
         let sq = 2.0 * a.sqrt() * alpha;
@@ -113,7 +118,7 @@ impl BiquadCoeffs {
 
     pub fn peak(freq: f32, q: f32, gain_db: f32, sr: f32) -> Self {
         let a = 10f32.powf(gain_db / 40.0);
-        let w = TAU * freq / sr;
+        let w = omega(freq, sr);
         let (sin, cos) = w.sin_cos();
         let alpha = sin / (2.0 * q);
         let a0 = 1.0 + alpha / a;
@@ -399,6 +404,19 @@ mod tests {
             }
         }
         20.0 * ((sum / (n - n / 2) as f32).sqrt() * 2f32.sqrt()).log10()
+    }
+
+    #[test]
+    fn bands_above_nyquist_stay_stable() {
+        let sr = 1234.57;
+        for c in [
+            BiquadCoeffs::low_shelf(EQ_LOW_HZ, 6.0, sr),
+            BiquadCoeffs::peak(EQ_MID_HZ, 0.7, 6.0, sr),
+            BiquadCoeffs::high_shelf(EQ_HIGH_HZ, -6.0, sr),
+        ] {
+            let gain = response(&c, 100.0, sr);
+            assert!(gain.is_finite() && gain < 12.0, "{gain} dB");
+        }
     }
 
     #[test]
