@@ -3,6 +3,9 @@ resolver = "2"
 members = ["app", "plugin", "presetgen", "xtask"]
 exclude = ["vendor"]
 
+[workspace.package]
+version = "0.1.0"
+
 [profile.release]
 lto = "thin"
 strip = "symbols"

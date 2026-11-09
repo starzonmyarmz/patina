@@ -9,11 +9,32 @@ in `vendor/` (see [vendor/README.md](vendor/README.md)). See
 
 ## Download
 
-Every push to `main` builds the plugins and publishes them as `Patina.zip` in
-the [latest release](https://github.com/starzonmyarmz/patina/releases/tag/latest).
-It holds VST3 and CLAP for macOS (Apple Silicon and Intel) and Windows, and
+Download `Patina-<version>.zip` from the
+[latest release](https://github.com/starzonmyarmz/patina/releases/latest). It
+holds VST3 and CLAP for macOS (Apple Silicon and Intel) and Windows, and
 [INSTALL.txt](INSTALL.txt), which says where to copy them and what to do when
 macOS or Windows flags them as unsafe.
+
+## Releasing
+
+Versions follow [semver](https://semver.org). The version lives once, in the
+root `Cargo.toml`, and it’s what hosts see as the plugin’s version.
+
+- **Major**: anything that breaks saved projects or presets, such as
+  renaming or removing a parameter ID or changing a parameter’s range.
+- **Minor**: new features, parameters or factory presets.
+- **Patch**: fixes that don’t change how saved projects sound.
+
+To release, bump the version, commit, then tag and push:
+
+```sh
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The tag starts the release workflow, which checks that the tag matches
+`Cargo.toml`, builds both platforms and publishes `Patina-1.1.0.zip`. A
+version with a suffix, like `1.1.0-beta.1`, is published as a prerelease.
 
 ## Build and install on macOS
 

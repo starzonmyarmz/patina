@@ -31,7 +31,7 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$icons" -o "$app/Contents/Resources/Patina.icns"
 
-version=$(sed -n 's/^version = "\(.*\)"/\1/p' app/Cargo.toml)
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

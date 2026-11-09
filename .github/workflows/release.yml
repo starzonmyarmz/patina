@@ -2,18 +2,36 @@ name: Release
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    tags: ["v*.*.*"]
 
 permissions:
   contents: write
 
 concurrency:
-  group: release
-  cancel-in-progress: true
+  group: release-${{ github.ref_name }}
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Cargo.toml's version $version isn't semver"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match Cargo.toml's version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   macos:
+    needs: version
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,6 +49,7 @@ jobs:
           path: dist/*
 
   windows:
+    needs: version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -48,8 +67,10 @@ jobs:
           path: dist/*
 
   release:
-    needs: [macos, windows]
+    needs: [version, macos, windows]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -63,14 +84,15 @@ jobs:
           unzip -q dist/windows.zip -d stage
           cp INSTALL.txt stage/
           cd stage
-          zip -qry ../Patina.zip INSTALL.txt macOS Windows
+          zip -qry "../Patina-$VERSION.zip" INSTALL.txt macOS Windows
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release delete latest --cleanup-tag --yes || true
-          gh release create latest Patina.zip \
-            --target "$GITHUB_SHA" \
-            --title "Latest build" \
-            --notes "Built from ${GITHUB_SHA::7}."
+          prerelease=
+          case "$VERSION" in *-*) prerelease=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" "Patina-$VERSION.zip" \
+            --title "Patina $VERSION" \
+            --generate-notes \
+            --verify-tag $prerelease
