@@ -1,7 +1,7 @@
 use super::env::{Env, Stage};
 use super::filter::{fast_tanh, VoiceFilter};
 use super::osc::{self, Rng, Tables};
-use super::{Mod, Patch, MAX_UNISON};
+use super::{note_hz, Mod, Patch, MAX_UNISON};
 use std::f32::consts::{FRAC_PI_4, LN_2, SQRT_2};
 
 const LN_1000: f32 = 6.907_755;
@@ -68,7 +68,7 @@ impl Voice {
     }
 
     pub fn start(&mut self, note: u8, vel: f32, glide_from: Option<f32>, spread: f32, stamp: u64) {
-        self.freq = 440.0 * 2f32.powf((note as f32 - 69.0) / 12.0);
+        self.freq = note_hz(note);
         if !self.active {
             for u in 0..MAX_UNISON {
                 self.ph1[u] = self.rng.unit();

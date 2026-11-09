@@ -298,7 +298,7 @@ impl Engine {
         self.stamp += 1;
         let voice = &mut self.voices[pick];
         voice.start(note, velocity, self.last_freq, self.patch.spread, self.stamp);
-        self.last_freq = Some(440.0 * 2f32.powf((note as f32 - 69.0) / 12.0));
+        self.last_freq = Some(note_hz(note));
     }
 
     pub fn note_off(&mut self, note: u8) {
@@ -382,6 +382,10 @@ impl Engine {
             *r = xr * self.volume;
         }
     }
+}
+
+pub fn note_hz(note: u8) -> f32 {
+    440.0 * 2f32.powf((note as f32 - 69.0) / 12.0)
 }
 
 fn oldest(pool: &[Voice], filter: impl Fn(&Voice) -> bool) -> Option<usize> {
