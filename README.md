@@ -5,7 +5,7 @@ Rust, built with [nih-plug](https://github.com/robbert-vdh/nih-plug), patched
 in `vendor/` (see [vendor/README.md](vendor/README.md)). See
 [SPEC.md](SPEC.md) for the design and build order.
 
-![Patina’s editor showing the Acid Bass preset](docs/screenshot.jpg)
+![Patina’s editor showing the Gritty Dry Saw Lead preset](docs/screenshot.jpg)
 
 ## Download
 
