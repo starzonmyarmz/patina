@@ -102,12 +102,12 @@ impl Controls {
     }
 
     pub fn filter(&self) -> String {
-        self.filter.lock().map(|f| f.clone()).unwrap_or_default()
+        lock(&self.filter).clone()
     }
 
     /// The editor's filter choice.
     pub fn set_filter(&self, filter: &str) {
-        *self.filter.lock().unwrap_or_else(|e| e.into_inner()) = filter.to_string();
+        *lock(&self.filter) = filter.to_string();
     }
 
     /// Changes whenever browsing picks a filter.
@@ -133,11 +133,11 @@ impl Controls {
     }
 
     pub fn library(&self) -> MutexGuard<'_, Library> {
-        self.library.lock().unwrap_or_else(|e| e.into_inner())
+        lock(&self.library)
     }
 
     pub fn set_order(&self, keys: Vec<String>) {
-        *self.order.lock().unwrap_or_else(|e| e.into_inner()) = keys;
+        *lock(&self.order) = keys;
     }
 
     pub fn audition(&self) -> bool {
@@ -173,14 +173,14 @@ impl Controls {
     }
 
     pub fn keep_context(&self, context: impl FnOnce() -> Arc<dyn GuiContext>) {
-        let mut slot = self.context.lock().unwrap_or_else(|e| e.into_inner());
+        let mut slot = lock(&self.context);
         if slot.is_none() {
             *slot = Some(context());
         }
     }
 
     pub fn drop_context(&self) {
-        *self.context.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        *lock(&self.context) = None;
     }
 
     /// Audio thread. Returns false for CCs the MiniLab setup doesn't use.
@@ -229,7 +229,7 @@ impl Controls {
     /// GUI thread. Without a context (the plugin isn't active) the pending
     /// moves are dropped rather than saved up.
     pub fn run(&self, params: &ThousandParams) {
-        let context = self.context.lock().ok().and_then(|c| c.clone());
+        let context = lock(&self.context).clone();
         match context {
             Some(context) => self.run_with(params, &mut ContextHost::new(&*context, params)),
             None => {
@@ -272,7 +272,7 @@ impl Controls {
 
     fn browse(&self, params: &ThousandParams, host: &mut impl Host) {
         let (presets, filters) = {
-            let mut fractions = self.fractions.lock().unwrap_or_else(|e| e.into_inner());
+            let mut fractions = lock(&self.fractions);
             let presets = self.items(PRESET_KNOB, &mut fractions);
             let filters = self.items(FILTER_KNOB, &mut fractions);
             for (i, t) in self.ticks.iter().enumerate() {
@@ -314,7 +314,7 @@ impl Controls {
         let slots = PAGES[self.page()].slots();
         let sweep = if self.fine() { TICKS_PER_SWEEP * FINE } else { TICKS_PER_SWEEP };
         {
-            let mut fractions = self.fractions.lock().unwrap_or_else(|e| e.into_inner());
+            let mut fractions = lock(&self.fractions);
             for (i, slot) in slots.iter().enumerate() {
                 let ticks = self.ticks[i].swap(0, Ordering::AcqRel);
                 let Some(pid) = *slot else { continue };
@@ -341,7 +341,7 @@ impl Controls {
     /// Loads the next preset in the browser's order that `wanted` accepts.
     fn step_to(&self, params: &ThousandParams, step: i32, host: &mut impl Host, wanted: impl Fn(&Library, &str) -> bool) {
         let library = self.library();
-        let order = self.order.lock().map(|o| o.clone()).unwrap_or_default();
+        let order = lock(&self.order).clone();
         let keys = if order.is_empty() { library.keys() } else { order };
         let len = keys.len() as i32;
         if len == 0 {
@@ -391,6 +391,10 @@ impl Controls {
 /// cover a continuous parameter's range, or None when it doesn't move.
 /// Stepped parameters take several ticks per step when they have few steps,
 /// so menus don't race past.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 fn turn(pid: Pid, current: f32, ticks: i32, sweep: f32, fraction: &mut f32) -> Option<f32> {
     let target = match pid.spec().steps() {
         None => (current + ticks as f32 / sweep).clamp(0.0, 1.0),
