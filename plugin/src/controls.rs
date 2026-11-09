@@ -36,6 +36,7 @@ pub struct Controls {
     held: [AtomicBool; CLICKS as usize],
     /// Counts pad presses and releases, which repaint the pad on the device.
     pad_touches: AtomicU32,
+    ccs: AtomicU32,
     /// Taken on activate, cleared on deactivate.
     context: Mutex<Option<GuiContext>>,
     library: Mutex<Library>,
@@ -68,6 +69,7 @@ impl Controls {
             knob_mode: AtomicU8::new(mode as u8),
             held: Default::default(),
             pad_touches: AtomicU32::new(0),
+            ccs: AtomicU32::new(0),
             context: Mutex::new(None),
             library: Mutex::new(library),
             order: Mutex::new(Vec::new()),
@@ -127,6 +129,10 @@ impl Controls {
         self.pad_touches.load(Ordering::Acquire)
     }
 
+    pub fn ccs(&self) -> u32 {
+        self.ccs.load(Ordering::Relaxed)
+    }
+
     fn fine(&self) -> bool {
         self.held.iter().any(|h| h.load(Ordering::Relaxed))
     }
@@ -184,6 +190,7 @@ impl Controls {
 
     /// Audio thread. Returns false for CCs the MiniLab setup doesn't use.
     pub fn midi_cc(&self, cc: u8, value: u8) -> bool {
+        self.ccs.fetch_add(1, Ordering::Relaxed);
         if (PAD_FIRST_CC..PAD_FIRST_CC + PADS).contains(&cc) {
             self.pad_touches.fetch_add(1, Ordering::Release);
         }

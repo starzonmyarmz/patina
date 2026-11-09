@@ -2,7 +2,9 @@
 
 Patina writes the settings below to the MiniLab over SysEx whenever it
 connects to it: when the plugin or app starts, and when the MiniLab is
-plugged back in. There’s nothing to set up. The device forgets them when it
+plugged back in. It sends them again every few seconds while the controls
+are idle, in case recalling one of the MiniLab’s memories replaced them.
+There’s nothing to set up. The device forgets them when it
 powers off, so other apps get its own settings back.
 
 Every control sends on the MiniLab’s global channel.

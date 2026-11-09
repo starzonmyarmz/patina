@@ -4,7 +4,7 @@
 //! out on every connect.
 
 use crate::controls::Controls;
-use crate::minilab::{lights, pad_color, setup, Color, SysEx, LIGHTS};
+use crate::minilab::{lights, pad_color, setup, Color, KnobMode, SysEx, LIGHTS};
 use crate::params::ThousandParams;
 use crate::ratings::Verdict;
 use midir::{MidiOutput, MidiOutputConnection};
@@ -19,6 +19,11 @@ const RECHECK: Duration = Duration::from_secs(1);
 /// The MiniLab lights a pad itself when it's hit, so the lights go out
 /// again after each touch, and once more in case it repaints late.
 const REPAINT_AGAIN: Duration = Duration::from_millis(150);
+/// Something can replace the setup without the MiniLab disconnecting, such
+/// as recalling one of its memories, so it goes out again whenever the
+/// controls are idle.
+const RESEND_SETUP: Duration = Duration::from_secs(5);
+const IDLE: Duration = Duration::from_secs(1);
 
 fn minilab_connected() -> bool {
     MidiOutput::new("Patina").is_ok_and(|out| out.ports().iter().any(|p| out.port_name(p).is_ok_and(|n| n.contains(DEVICE))))
@@ -66,8 +71,10 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) -> Lights {
         let mut connection: Option<MidiOutputConnection> = None;
         let mut checked = None::<Instant>;
         let mut sent: [Option<Color>; LIGHTS] = [None; LIGHTS];
-        let mut set_up = None;
+        let mut set_up = None::<(KnobMode, Instant)>;
         let mut touches = 0;
+        let mut ccs = 0;
+        let mut last_cc = Instant::now();
         let mut repaint_at = None::<Instant>;
         let mut verdict = VerdictLookup::default();
         loop {
@@ -84,6 +91,15 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) -> Lights {
                     set_up = None;
                 }
             }
+            let now_ccs = controls.ccs();
+            if now_ccs != ccs {
+                ccs = now_ccs;
+                last_cc = Instant::now();
+            }
+            if set_up.is_some_and(|(_, at)| at.elapsed() >= RESEND_SETUP) && last_cc.elapsed() >= IDLE {
+                set_up = None;
+                sent = [None; LIGHTS];
+            }
             let now_touches = controls.pad_touches();
             if now_touches != touches {
                 touches = now_touches;
@@ -96,9 +112,9 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) -> Lights {
             if let Some(conn) = &mut connection {
                 let mut messages: Vec<SysEx> = Vec::new();
                 let mode = controls.knob_mode();
-                if set_up != Some(mode) {
+                if set_up.is_none_or(|(m, _)| m != mode) {
                     messages.extend(setup(mode));
-                    set_up = Some(mode);
+                    set_up = Some((mode, Instant::now()));
                 }
                 let audition = controls.audition().then(|| verdict.get(&params, &controls));
                 for (i, color) in lights(controls.page(), controls.browsing(), audition).into_iter().enumerate() {
