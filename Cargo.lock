@@ -2300,7 +2300,7 @@ dependencies = [
 
 [[package]]
 name = "patina"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "baseview 0.1.0 (git+https://github.com/RustAudio/baseview.git?rev=9a0b42c09d712777b2edb4c5e0cb6baf21e988f0)",
  "keyboard-types",
@@ -2315,7 +2315,7 @@ dependencies = [
 
 [[package]]
 name = "patina-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cpal",
  "midir 0.11.1",
