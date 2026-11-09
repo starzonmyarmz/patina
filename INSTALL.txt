@@ -1,0 +1,41 @@
+Installing Patina
+=================
+
+Patina comes as a VST3 and a CLAP plugin. Copy both from the folder for
+your computer, then rescan plugins in your DAW. Use the CLAP version if
+your DAW supports it.
+
+
+macOS (Apple Silicon and Intel)
+-------------------------------
+
+1. In Finder, choose Go > Go to Folder and enter:
+   ~/Library/Audio/Plug-Ins
+2. Copy macOS/Patina.vst3 into the VST3 folder.
+3. Copy macOS/Patina.clap into the CLAP folder.
+   Create either folder if it isn’t there.
+
+Patina isn’t signed or notarized, so macOS may refuse to load it. If your
+DAW doesn’t list it after a rescan, open Terminal, run this, then rescan:
+
+   xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Patina.vst3 ~/Library/Audio/Plug-Ins/CLAP/Patina.clap
+
+
+Windows
+-------
+
+Before unzipping, right-click the zip, choose Properties, check Unblock
+and click OK. If SmartScreen or your antivirus blocks the download,
+choose to keep it.
+
+1. Copy Windows\Patina.vst3 into:
+   C:\Program Files\Common Files\VST3
+2. Copy Windows\Patina.clap into:
+   C:\Program Files\Common Files\CLAP
+   Create either folder if it isn’t there.
+
+
+Uninstalling
+------------
+
+Delete Patina.vst3 and Patina.clap from the folders above.

@@ -22,10 +22,9 @@ jobs:
       - run: cargo xtask bundle-universal patina --release
       - name: Zip
         run: |
-          mkdir dist
-          cd target/bundled
-          ditto -c -k --keepParent Patina.vst3 ../../dist/Patina-macOS-VST3.zip
-          ditto -c -k --keepParent Patina.clap ../../dist/Patina-macOS-CLAP.zip
+          mkdir -p stage/macOS dist
+          cp -R target/bundled/Patina.vst3 target/bundled/Patina.clap stage/macOS/
+          ditto -c -k --norsrc --noextattr --noacl --keepParent stage/macOS dist/macos.zip
       - uses: actions/upload-artifact@v7
         with:
           name: macos
@@ -40,9 +39,9 @@ jobs:
       - name: Zip
         shell: pwsh
         run: |
-          New-Item -ItemType Directory dist
-          Compress-Archive -Path target/bundled/Patina.vst3 -DestinationPath dist/Patina-Windows-VST3.zip
-          Compress-Archive -Path target/bundled/Patina.clap -DestinationPath dist/Patina-Windows-CLAP.zip
+          New-Item -ItemType Directory -Force stage/Windows, dist
+          Copy-Item -Recurse target/bundled/Patina.vst3, target/bundled/Patina.clap stage/Windows
+          Compress-Archive -Path stage/Windows -DestinationPath dist/windows.zip
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -52,17 +51,26 @@ jobs:
     needs: [macos, windows]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+      - name: Zip
+        run: |
+          mkdir stage
+          unzip -q dist/macos.zip -d stage
+          unzip -q dist/windows.zip -d stage
+          cp INSTALL.txt stage/
+          cd stage
+          zip -qry ../Patina.zip INSTALL.txt macOS Windows
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --cleanup-tag --yes || true
-          gh release create latest dist/* \
+          gh release create latest Patina.zip \
             --target "$GITHUB_SHA" \
             --title "Latest build" \
             --notes "Built from ${GITHUB_SHA::7}."
