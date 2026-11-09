@@ -91,7 +91,8 @@ impl Comb {
         if rp < 0.0 {
             rp += COMB_LEN as f32;
         }
-        let i0 = rp as usize;
+        // A delay a hair past `pos` wraps to exactly COMB_LEN in f32.
+        let i0 = (rp as usize).min(COMB_LEN - 1);
         let fr = rp - i0 as f32;
         let i1 = (i0 + 1) % COMB_LEN;
         let fb = 0.5 + res * 0.45;
@@ -178,6 +179,17 @@ impl VoiceFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn comb_delay_just_past_the_write_position_stays_in_bounds() {
+        let sr = 48_000.0;
+        let mut comb = Comb::new();
+        for _ in 0..100 {
+            comb.tick(0.0, 1000.0, 0.5, sr);
+        }
+        let y = comb.tick(1.0, sr / 100.000_01, 0.5, sr);
+        assert!(y.is_finite());
+    }
 
     fn rms_through(mut f: impl FnMut(f32) -> f32, freq: f32, sr: f32) -> f32 {
         let n = (sr * 0.5) as usize;
