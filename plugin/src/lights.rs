@@ -24,6 +24,8 @@ const REPAINT_AGAIN: Duration = Duration::from_millis(150);
 /// controls are idle.
 const RESEND_SETUP: Duration = Duration::from_secs(5);
 const IDLE: Duration = Duration::from_secs(1);
+/// Sent back to back, the MiniLab drops some of a setup's messages.
+const SEND_GAP: Duration = Duration::from_millis(2);
 
 fn minilab_connected() -> bool {
     MidiOutput::new("Patina").is_ok_and(|out| out.ports().iter().any(|p| out.port_name(p).is_ok_and(|n| n.contains(DEVICE))))
@@ -35,10 +37,20 @@ fn connect() -> Option<MidiOutputConnection> {
     out.connect(&port, "Patina lights").ok()
 }
 
-fn turn_off(conn: &mut MidiOutputConnection) {
-    for i in 0..LIGHTS {
-        let _ = conn.send(&pad_color(i, Color::Off));
+fn send_spaced(conn: &mut MidiOutputConnection, messages: &[SysEx]) -> bool {
+    for (i, m) in messages.iter().enumerate() {
+        if i > 0 {
+            std::thread::sleep(SEND_GAP);
+        }
+        if conn.send(m).is_err() {
+            return false;
+        }
     }
+    true
+}
+
+fn turn_off(conn: &mut MidiOutputConnection) {
+    let _ = send_spaced(conn, &(0..LIGHTS).map(|i| pad_color(i, Color::Off)).collect::<Vec<_>>());
 }
 
 /// For the app, which exits without dropping the plugin.
@@ -123,7 +135,7 @@ pub fn spawn(params: Weak<ThousandParams>, controls: Weak<Controls>) -> Lights {
                         sent[i] = Some(color);
                     }
                 }
-                if messages.iter().any(|m| conn.send(m).is_err()) {
+                if !send_spaced(conn, &messages) {
                     connection = None;
                 }
             }
