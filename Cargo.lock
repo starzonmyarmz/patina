@@ -2164,7 +2164,6 @@ version = "1.1.2"
 dependencies = [
  "baseview",
  "keyboard-types",
- "midir",
  "nice-plug",
  "objc",
  "raw-window-handle",

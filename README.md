@@ -105,10 +105,10 @@ plugin doesn't clear one already merged into the repo: edit
 
 ## MiniLab MK2
 
-Patina programs the MiniLab itself whenever it connects; see
-[docs/minilab-setup.md](docs/minilab-setup.md). Knobs follow the page on
-screen, finer while knob 1 or 9 is held; bank 1 pads switch pages and light up
-to show the page. Pad 8 turns knob 1 into a preset dial and knob 2 into the
+Store the setup in [docs/minilab-setup.md](docs/minilab-setup.md) in one of
+the MiniLab’s memories with MIDI Control Center; Patina never writes to the
+device. Knobs follow the page on screen, finer while knob 1 or 9 is held; bank
+1 pads switch pages. Pad 8 turns knob 1 into a preset dial and knob 2 into the
 browser's filter.
 
 ## Working on the UI
@@ -153,8 +153,7 @@ same loudness, and checks that all macros at full stay clean.
 | `plugin/src/bridge.rs` | The editor's message protocol: values, presets, session, compare. |
 | `plugin/src/editor.rs` | The webview window and keyboard forwarding. |
 | `ui/index.html` | The whole interface: plain HTML, CSS and JavaScript. |
-| `plugin/src/minilab.rs` | MiniLab CC numbers, relative encoder decoding, the SysEx setup and pad colors. |
-| `plugin/src/lights.rs` | The thread that sends pad lights and the setup to the MiniLab. |
+| `plugin/src/minilab.rs` | MiniLab CC numbers and relative encoder decoding. |
 | `plugin/src/controls.rs` | Hardware state shared by the audio thread, the GUI-thread task and the editor. |
 | `plugin/src/macros.rs` | Per-preset macro matrix. |
 | `plugin/src/presets.rs` | Preset format, factory bank, user preset files, the session saved with projects. |

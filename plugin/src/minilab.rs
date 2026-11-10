@@ -1,7 +1,6 @@
 //! The Arturia MiniLab MK2 as set up in docs/minilab-setup.md.
 
 use crate::layout::KNOBS;
-use crate::ratings::Verdict;
 
 pub const KNOB_FIRST_CC: u8 = 102;
 pub const PAD_FIRST_CC: u8 = 20;
@@ -100,110 +99,6 @@ pub fn classify(cc: u8, value: u8, mode: KnobMode) -> Option<Control> {
     None
 }
 
-pub type SysEx = [u8; 12];
-
-/// Sets one of a control's settings, as MIDI Control Center does.
-fn set(param: u8, control: u8, value: u8) -> SysEx {
-    [0xF0, 0x00, 0x20, 0x6B, 0x7F, 0x42, 0x02, 0x00, param, control, value, 0xF7]
-}
-
-const MODE: u8 = 0x01;
-const CHANNEL: u8 = 0x02;
-const NUMBER: u8 = 0x03;
-const MIN: u8 = 0x04;
-const MAX: u8 = 0x05;
-const BEHAVIOUR: u8 = 0x06;
-const COLOR: u8 = 0x10;
-
-const MODE_CONTROL: u8 = 0x01;
-const MODE_SWITCHED: u8 = 0x08;
-const MODE_NOTE: u8 = 0x09;
-const GLOBAL_CHANNEL: u8 = 0x41;
-const GATE: u8 = 0x01;
-
-/// SysEx IDs of knobs 1–16.
-const KNOB_IDS: [u8; KNOBS] = [0x30, 0x01, 0x02, 0x09, 0x0B, 0x0C, 0x0D, 0x0E, 0x33, 0x03, 0x04, 0x0A, 0x05, 0x06, 0x07, 0x08];
-/// Knobs 1 and 9 turned with Shift held.
-const SHIFT_KNOB_IDS: [u8; 2] = [0x32, 0x35];
-const CLICK_IDS: [u8; CLICKS as usize] = [0x31, 0x34];
-/// Pads 1–16: bank 1, then bank 2.
-const PAD_FIRST_ID: u8 = 0x70;
-
-/// Writes the setup in docs/minilab-setup.md to the MiniLab's current
-/// settings.
-pub fn setup(mode: KnobMode) -> Vec<SysEx> {
-    let mut out = Vec::new();
-    let mut control = |id: u8, mode: u8, number: u8, behaviour: u8| {
-        out.extend([set(MODE, id, mode), set(CHANNEL, id, GLOBAL_CHANNEL), set(NUMBER, id, number), set(BEHAVIOUR, id, behaviour)]);
-    };
-    for (i, id) in KNOB_IDS.into_iter().enumerate() {
-        control(id, MODE_CONTROL, KNOB_FIRST_CC + i as u8, mode as u8);
-    }
-    for (i, id) in SHIFT_KNOB_IDS.into_iter().enumerate() {
-        control(id, MODE_CONTROL, KNOB_FIRST_CC + 8 * i as u8, mode as u8);
-    }
-    for (i, id) in CLICK_IDS.into_iter().enumerate() {
-        control(id, MODE_SWITCHED, CLICK_FIRST_CC + i as u8, GATE);
-    }
-    for i in 0..PADS {
-        control(PAD_FIRST_ID + i, MODE_SWITCHED, PAD_FIRST_CC + i, GATE);
-    }
-    for i in 0..PADS {
-        control(PAD_FIRST_ID + PADS + i, MODE_NOTE, RATING_FIRST_NOTE + i, GATE);
-    }
-    for id in CLICK_IDS.into_iter().chain((0..PADS).map(|i| PAD_FIRST_ID + i)) {
-        out.extend([set(MIN, id, 0), set(MAX, id, 127)]);
-    }
-    out
-}
-
-/// The pad colors the MK2 can show. It has no brightness.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Color {
-    Off = 0x00,
-    Red = 0x01,
-    Green = 0x04,
-    Yellow = 0x05,
-    Blue = 0x10,
-    Magenta = 0x11,
-    Cyan = 0x14,
-    White = 0x7F,
-}
-
-pub const LIGHTS: usize = 2 * PADS as usize;
-
-pub fn pad_color(pad: usize, color: Color) -> SysEx {
-    set(COLOR, PAD_FIRST_ID + pad as u8, color as u8)
-}
-
-/// Bank 1 shows the page, or the browse pad while browsing; bank 2 shows
-/// the rating pads in audition mode. A rated preset lights only its
-/// verdict's pad.
-pub fn lights(page: usize, browsing: bool, audition: Option<Option<Verdict>>) -> [Color; LIGHTS] {
-    let mut out = [Color::Off; LIGHTS];
-    for (i, light) in out[..BROWSE_PAD].iter_mut().enumerate() {
-        *light = if i == page && !browsing { Color::White } else { Color::Blue };
-    }
-    out[BROWSE_PAD] = if browsing { Color::White } else { Color::Green };
-    let Some(verdict) = audition else { return out };
-    let bank = &mut out[PADS as usize..];
-    for (light, pad) in bank.iter_mut().zip(RatingPad::ALL) {
-        let shows = |v: Verdict, color| if verdict.is_none_or(|current| current == v) { color } else { Color::Off };
-        *light = match pad {
-            RatingPad::Keep => shows(Verdict::Keep, Color::Green),
-            RatingPad::Tweak => shows(Verdict::Tweak, Color::Yellow),
-            RatingPad::Cut => shows(Verdict::Cut, Color::Red),
-            RatingPad::Clear if verdict.is_some() => Color::White,
-            RatingPad::Clear => Color::Off,
-            RatingPad::Replay => Color::Magenta,
-            RatingPad::NextUnrated => Color::Cyan,
-            RatingPad::Previous | RatingPad::Next => Color::Green,
-        };
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,39 +123,6 @@ mod tests {
         assert_eq!(classify(1, 127, m), None);
         assert_eq!(classify(118, 127, m), Some(Control::Click { index: 0, down: true }));
         assert_eq!(classify(119, 0, m), Some(Control::Click { index: 1, down: false }));
-    }
-
-    #[test]
-    fn setup_gives_each_control_its_own_message() {
-        let messages = setup(KnobMode::Relative2);
-        assert!(messages.iter().all(|m| m[..8] == [0xF0, 0x00, 0x20, 0x6B, 0x7F, 0x42, 0x02, 0x00] && m[11] == 0xF7));
-        let number = |id| messages.iter().find(|m| m[8] == NUMBER && m[9] == id).map(|m| m[10]);
-        assert_eq!(number(0x30), Some(102));
-        assert_eq!(number(0x08), Some(117));
-        assert_eq!(number(0x34), Some(119));
-        assert_eq!(number(0x77), Some(27));
-        assert_eq!(number(0x7F), Some(51));
-        assert!(messages.iter().filter(|m| m[8] == BEHAVIOUR && KNOB_IDS.contains(&m[9])).all(|m| m[10] == 2));
-    }
-
-    #[test]
-    fn lights_show_the_page_and_the_verdict() {
-        let paged = lights(2, false, None);
-        assert_eq!(paged[2], Color::White);
-        assert_eq!(paged[0], Color::Blue);
-        assert_eq!(paged[6..8], [Color::Blue, Color::Green]);
-        assert!(paged[8..].iter().all(|c| *c == Color::Off));
-
-        let browsing = lights(2, true, None);
-        assert!(browsing[..7].iter().all(|c| *c == Color::Blue));
-        assert_eq!(browsing[7], Color::White);
-
-        let unrated = lights(0, false, Some(None));
-        assert_eq!(unrated[8..11], [Color::Green, Color::Yellow, Color::Red]);
-        assert_eq!(unrated[11], Color::Off);
-
-        let cut = lights(0, false, Some(Some(Verdict::Cut)));
-        assert_eq!(cut[8..12], [Color::Off, Color::Off, Color::Red, Color::White]);
     }
 
     #[test]

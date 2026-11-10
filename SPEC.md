@@ -30,7 +30,6 @@ All of these are v1:
 1. Full engine and effects (every JSFX module, plus tempo sync).
 2. Finished skeuomorphic UI.
 3. Preset browser with categories, tags, search and favorites.
-4. MiniLab pad lights (see Risks).
 
 ## Build order
 
@@ -50,8 +49,9 @@ Each step ends with something that loads and plays in REAPER.
    guide.
 6. **Audition mode** and curation sessions. Done: see the README's "Curating the
    factory bank".
-7. **Pad lights** and writing the MiniLab setup over SysEx. Done: see
-   `docs/minilab-setup.md`.
+7. **Pad lights** and writing the MiniLab setup over SysEx. Built, then
+   removed: every plugin instance took over the device, and dropped or
+   overlapping writes left it half set up.
 8. **Arpeggiator.** Done: see Arpeggiator below.
 
 ## Parameters
@@ -194,9 +194,9 @@ One JSON object per preset:
 
 ## MiniLab MK2
 
-Patina writes the setup to the device over SysEx on every connect, since the
-device forgets SysEx-written settings when it powers off. The exact settings are in `docs/minilab-setup.md`. Tested
-on firmware 1.1.2.25.
+The setup is stored in one of the device's memories with MIDI Control Center;
+Patina only reads the MiniLab. The exact settings are in
+`docs/minilab-setup.md`. Tested on firmware 1.1.2.25.
 
 - **Knobs 1–16**: relative mode, CC 102–117. The plugin supports all three of
   Arturia's relative encodings; the one in use is a setting.
@@ -207,8 +207,6 @@ on firmware 1.1.2.25.
 - **Pad bank 2**: notes, as the factory setup sends them.
 - **Touch strips**: pitch bend and mod wheel (CC1). Mod wheel adds to macro 1.
 - In audition mode, pad bank 2 rates presets instead of playing notes.
-- **Pad lights**: bank 1 shows the page, bank 2 the rating pads in audition
-  mode.
 
 SysEx, all `F0 00 20 6B 7F 42 … F7`: `01 00 <param> <control>` reads a
 setting and the device answers `02 00 <param> <control> <value>`; `02 00
@@ -233,7 +231,8 @@ pads 1–16 `70`–`7F`.
 1. **Resolved: pad lights.** The community-known SysEx works on this unit.
    Rather than route the plugin's MIDI output back to the MiniLab in each
    REAPER project (and lose VST3, which can't send SysEx), a background
-   thread opens the MiniLab's port directly with midir.
+   thread opens the MiniLab's port directly with midir. Later removed with the
+   lights (build step 7).
 2. **Webview crate maturity.** nih-plug's webview support is a small community
    crate. The spike in step 4 decides whether it holds up or needs a fork.
 3. **Resolved: nih-plug failed 4 clap-validator 0.4 state tests.** It never
