@@ -1,9 +1,16 @@
 # MiniLab MK2 setup
 
 Patina only listens to the MiniLab; it never changes the device’s settings.
-Set the controls up as below in MIDI Control Center, store them to one of the
-MiniLab’s memories and make that memory the active one. Settings stored in a
-memory survive unplugging, and other apps can use another memory.
+The setup below lives in one of the MiniLab’s memories, where it survives
+unplugging and other apps can use another memory:
+
+1. In MIDI Control Center, import [Patina.minilabmk2](Patina.minilabmk2).
+2. Store it to a memory other than 1, which Analog Lab Lite uses, such as 2.
+3. On the MiniLab, hold Shift and press that memory’s pad.
+
+The file sets the knobs to Relative #1, Patina’s default. With another knob
+mode in the **midi** dialog, change the knobs to match in MIDI Control Center
+before storing.
 
 Every control sends on the MiniLab’s global channel.
 
