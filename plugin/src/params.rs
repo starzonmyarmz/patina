@@ -21,7 +21,6 @@ pub struct Spec {
     pub kind: Kind,
     pub default: f32,
     pub unit: &'static str,
-    pub jsfx: Option<u16>,
 }
 
 const fn lin(min: f32, max: f32) -> Kind {
@@ -53,7 +52,7 @@ pub const ARP_DIVISIONS: &[&str] = &["1/4", "1/4T", "1/8", "1/8T", "1/16", "1/16
 pub const ARP_DIVISION_BEATS: &[f32] = &[1.0, 2.0 / 3.0, 0.5, 1.0 / 3.0, 0.25, 1.0 / 6.0, 0.125];
 
 macro_rules! params {
-    ($( $group:literal { $( $pid:ident = $id:literal, $name:literal, $kind:expr, $default:expr, $unit:literal, $jsfx:expr; )* } )*) => {
+    ($( $group:literal { $( $pid:ident = $id:literal, $name:literal, $kind:expr, $default:expr, $unit:literal; )* } )*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         #[repr(usize)]
         pub enum Pid { $( $( $pid, )* )* }
@@ -64,138 +63,138 @@ macro_rules! params {
 
         pub const SPECS: &[Spec] = &[$( $( Spec {
             id: $id, name: $name, group: $group, kind: $kind,
-            default: $default as f32, unit: $unit, jsfx: $jsfx,
+            default: $default as f32, unit: $unit,
         }, )* )*];
     };
 }
 
 params! {
     "Global" {
-        Volume = "volume", "Volume", PCT, 80, " %", Some(11);
-        Polyphony = "polyphony", "Polyphony", int(1, 16), 16, "", Some(12);
-        Glide = "glide", "Glide", skew(0.0, 2000.0, -2.0), 0, " ms", Some(117);
+        Volume = "volume", "Volume", PCT, 80, " %";
+        Polyphony = "polyphony", "Polyphony", int(1, 16), 16, "";
+        Glide = "glide", "Glide", skew(0.0, 2000.0, -2.0), 0, " ms";
     }
     "Macros" {
-        Macro1 = "macro1", "Macro 1", PCT, 0, " %", None;
-        Macro2 = "macro2", "Macro 2", PCT, 0, " %", None;
-        Macro3 = "macro3", "Macro 3", PCT, 0, " %", None;
-        Macro4 = "macro4", "Macro 4", PCT, 0, " %", None;
-        Macro5 = "macro5", "Macro 5", PCT, 0, " %", None;
-        Macro6 = "macro6", "Macro 6", PCT, 0, " %", None;
-        Macro7 = "macro7", "Macro 7", PCT, 0, " %", None;
-        Macro8 = "macro8", "Macro 8", PCT, 0, " %", None;
+        Macro1 = "macro1", "Macro 1", PCT, 0, " %";
+        Macro2 = "macro2", "Macro 2", PCT, 0, " %";
+        Macro3 = "macro3", "Macro 3", PCT, 0, " %";
+        Macro4 = "macro4", "Macro 4", PCT, 0, " %";
+        Macro5 = "macro5", "Macro 5", PCT, 0, " %";
+        Macro6 = "macro6", "Macro 6", PCT, 0, " %";
+        Macro7 = "macro7", "Macro 7", PCT, 0, " %";
+        Macro8 = "macro8", "Macro 8", PCT, 0, " %";
     }
     "Oscillators" {
-        Osc1Type = "osc1_type", "Osc 1 type", Kind::Enum(OSC_TYPES), 1, "", Some(13);
-        Osc1Semi = "osc1_semi", "Osc 1 semitone", int(-24, 24), 0, " st", Some(14);
-        Osc1Detune = "osc1_detune", "Osc 1 detune", lin(-50.0, 50.0), 0, " ct", Some(15);
-        Osc1Level = "osc1_level", "Osc 1 level", PCT, 80, " %", Some(16);
-        Osc2Type = "osc2_type", "Osc 2 type", Kind::Enum(OSC_TYPES), 1, "", Some(17);
-        Osc2Semi = "osc2_semi", "Osc 2 semitone", int(-24, 24), 7, " st", Some(18);
-        Osc2Detune = "osc2_detune", "Osc 2 detune", lin(-50.0, 50.0), 0, " ct", Some(19);
-        Osc2Level = "osc2_level", "Osc 2 level", PCT, 40, " %", Some(20);
-        FmAmount = "fm_amount", "FM amount", PCT, 0, " %", Some(21);
-        RingMod = "ring_mod", "Ring mod", Kind::Bool, 0, "", Some(22);
-        Unison = "unison", "Unison voices", int(1, 8), 1, "", Some(23);
-        UnisonDetune = "unison_detune", "Unison detune", lin(0.0, 120.0), 15, " ct", Some(24);
-        Spread = "spread", "Stereo spread", PCT, 15, " %", Some(25);
-        SubLevel = "sub_level", "Sub level", PCT, 0, " %", Some(26);
-        NoiseLevel = "noise_level", "Noise level", PCT, 0, " %", Some(27);
-        PinkLevel = "pink_level", "Pink noise level", PCT, 0, " %", Some(28);
-        WavetablePos = "wt_pos", "Wavetable position", PCT, 50, " %", Some(59);
-        PwmWidth = "pwm_width", "PWM width", PCT, 50, " %", Some(60);
-        SupersawDetune = "supersaw_detune", "Supersaw detune", lin(0.0, 200.0), 40, " ct", Some(61);
+        Osc1Type = "osc1_type", "Osc 1 type", Kind::Enum(OSC_TYPES), 1, "";
+        Osc1Semi = "osc1_semi", "Osc 1 semitone", int(-24, 24), 0, " st";
+        Osc1Detune = "osc1_detune", "Osc 1 detune", lin(-50.0, 50.0), 0, " ct";
+        Osc1Level = "osc1_level", "Osc 1 level", PCT, 80, " %";
+        Osc2Type = "osc2_type", "Osc 2 type", Kind::Enum(OSC_TYPES), 1, "";
+        Osc2Semi = "osc2_semi", "Osc 2 semitone", int(-24, 24), 7, " st";
+        Osc2Detune = "osc2_detune", "Osc 2 detune", lin(-50.0, 50.0), 0, " ct";
+        Osc2Level = "osc2_level", "Osc 2 level", PCT, 40, " %";
+        FmAmount = "fm_amount", "FM amount", PCT, 0, " %";
+        RingMod = "ring_mod", "Ring mod", Kind::Bool, 0, "";
+        Unison = "unison", "Unison voices", int(1, 8), 1, "";
+        UnisonDetune = "unison_detune", "Unison detune", lin(0.0, 120.0), 15, " ct";
+        Spread = "spread", "Stereo spread", PCT, 15, " %";
+        SubLevel = "sub_level", "Sub level", PCT, 0, " %";
+        NoiseLevel = "noise_level", "Noise level", PCT, 0, " %";
+        PinkLevel = "pink_level", "Pink noise level", PCT, 0, " %";
+        WavetablePos = "wt_pos", "Wavetable position", PCT, 50, " %";
+        PwmWidth = "pwm_width", "PWM width", PCT, 50, " %";
+        SupersawDetune = "supersaw_detune", "Supersaw detune", lin(0.0, 200.0), 40, " ct";
     }
     "Filter" {
-        FilterType = "flt_type", "Filter type", Kind::Enum(FILTER_TYPES), 0, "", Some(62);
-        Cutoff = "flt_cutoff", "Cutoff", skew(20.0, 20_000.0, -2.5), 1262, " Hz", Some(63);
-        Resonance = "flt_res", "Resonance", PCT, 20, " %", Some(64);
-        FilterDrive = "flt_drive", "Filter drive", PCT, 0, " %", Some(65);
-        FilterEnvAmount = "flt_env_amt", "Filter env amount", lin(-48.0, 48.0), 0, " st", Some(66);
-        Vowel = "flt_vowel", "Formant vowel", PCT, 0, " %", Some(71);
-        FilterAttack = "flt_attack", "Filter env attack", MS, 10, " ms", Some(67);
-        FilterDecay = "flt_decay", "Filter env decay", MS, 300, " ms", Some(68);
-        FilterSustain = "flt_sustain", "Filter env sustain", PCT, 50, " %", Some(69);
-        FilterRelease = "flt_release", "Filter env release", MS, 300, " ms", Some(70);
+        FilterType = "flt_type", "Filter type", Kind::Enum(FILTER_TYPES), 0, "";
+        Cutoff = "flt_cutoff", "Cutoff", skew(20.0, 20_000.0, -2.5), 1262, " Hz";
+        Resonance = "flt_res", "Resonance", PCT, 20, " %";
+        FilterDrive = "flt_drive", "Filter drive", PCT, 0, " %";
+        FilterEnvAmount = "flt_env_amt", "Filter env amount", lin(-48.0, 48.0), 0, " st";
+        Vowel = "flt_vowel", "Formant vowel", PCT, 0, " %";
+        FilterAttack = "flt_attack", "Filter env attack", MS, 10, " ms";
+        FilterDecay = "flt_decay", "Filter env decay", MS, 300, " ms";
+        FilterSustain = "flt_sustain", "Filter env sustain", PCT, 50, " %";
+        FilterRelease = "flt_release", "Filter env release", MS, 300, " ms";
     }
     "Amp" {
-        AmpAttack = "amp_attack", "Amp attack", MS, 5, " ms", Some(72);
-        AmpDecay = "amp_decay", "Amp decay", MS, 300, " ms", Some(73);
-        AmpSustain = "amp_sustain", "Amp sustain", PCT, 80, " %", Some(74);
-        AmpRelease = "amp_release", "Amp release", MS, 300, " ms", Some(75);
+        AmpAttack = "amp_attack", "Amp attack", MS, 5, " ms";
+        AmpDecay = "amp_decay", "Amp decay", MS, 300, " ms";
+        AmpSustain = "amp_sustain", "Amp sustain", PCT, 80, " %";
+        AmpRelease = "amp_release", "Amp release", MS, 300, " ms";
     }
     "Mod env" {
-        ModAttack = "mod_attack", "Mod env attack", MS, 10, " ms", Some(76);
-        ModDecay = "mod_decay", "Mod env decay", MS, 300, " ms", Some(77);
-        ModSustain = "mod_sustain", "Mod env sustain", PCT, 50, " %", Some(78);
-        ModRelease = "mod_release", "Mod env release", MS, 300, " ms", Some(79);
+        ModAttack = "mod_attack", "Mod env attack", MS, 10, " ms";
+        ModDecay = "mod_decay", "Mod env decay", MS, 300, " ms";
+        ModSustain = "mod_sustain", "Mod env sustain", PCT, 50, " %";
+        ModRelease = "mod_release", "Mod env release", MS, 300, " ms";
     }
     "Pitch env" {
-        PitchEnv = "pitch_env", "Pitch env", Kind::Bool, 0, "", Some(80);
-        PitchEnvAmount = "pitch_env_amt", "Pitch env amount", lin(-24.0, 24.0), 12, " st", Some(81);
-        PitchEnvAttack = "pitch_env_attack", "Pitch env attack", skew(0.0, 1000.0, -2.0), 1, " ms", Some(82);
-        PitchEnvDecay = "pitch_env_decay", "Pitch env decay", skew(0.0, 1000.0, -2.0), 60, " ms", Some(83);
+        PitchEnv = "pitch_env", "Pitch env", Kind::Bool, 0, "";
+        PitchEnvAmount = "pitch_env_amt", "Pitch env amount", lin(-24.0, 24.0), 12, " st";
+        PitchEnvAttack = "pitch_env_attack", "Pitch env attack", skew(0.0, 1000.0, -2.0), 1, " ms";
+        PitchEnvDecay = "pitch_env_decay", "Pitch env decay", skew(0.0, 1000.0, -2.0), 60, " ms";
     }
     "LFO 1" {
-        Lfo1Rate = "lfo1_rate", "LFO 1 rate", LFO_HZ, 0.33, " Hz", Some(84);
-        Lfo1Shape = "lfo1_shape", "LFO 1 shape", Kind::Enum(LFO_SHAPES), 0, "", Some(85);
-        Lfo1Sync = "lfo1_sync", "LFO 1 sync", Kind::Bool, 0, "", None;
-        Lfo1Division = "lfo1_division", "LFO 1 division", Kind::Enum(DIVISIONS), 9, "", None;
-        Lfo1Pitch = "lfo1_pitch", "LFO 1 to pitch", PCT, 0, " %", Some(86);
-        Lfo1Filter = "lfo1_filter", "LFO 1 to filter", PCT, 0, " %", Some(87);
-        Lfo1Amp = "lfo1_amp", "LFO 1 to amp", PCT, 0, " %", Some(88);
+        Lfo1Rate = "lfo1_rate", "LFO 1 rate", LFO_HZ, 0.33, " Hz";
+        Lfo1Shape = "lfo1_shape", "LFO 1 shape", Kind::Enum(LFO_SHAPES), 0, "";
+        Lfo1Sync = "lfo1_sync", "LFO 1 sync", Kind::Bool, 0, "";
+        Lfo1Division = "lfo1_division", "LFO 1 division", Kind::Enum(DIVISIONS), 9, "";
+        Lfo1Pitch = "lfo1_pitch", "LFO 1 to pitch", PCT, 0, " %";
+        Lfo1Filter = "lfo1_filter", "LFO 1 to filter", PCT, 0, " %";
+        Lfo1Amp = "lfo1_amp", "LFO 1 to amp", PCT, 0, " %";
     }
     "LFO 2" {
-        Lfo2Rate = "lfo2_rate", "LFO 2 rate", LFO_HZ, 0.1, " Hz", Some(89);
-        Lfo2Shape = "lfo2_shape", "LFO 2 shape", Kind::Enum(LFO_SHAPES), 2, "", Some(90);
-        Lfo2Sync = "lfo2_sync", "LFO 2 sync", Kind::Bool, 0, "", None;
-        Lfo2Division = "lfo2_division", "LFO 2 division", Kind::Enum(DIVISIONS), 11, "", None;
-        Lfo2Pitch = "lfo2_pitch", "LFO 2 to pitch", PCT, 0, " %", Some(91);
-        Lfo2Filter = "lfo2_filter", "LFO 2 to filter", PCT, 0, " %", Some(92);
+        Lfo2Rate = "lfo2_rate", "LFO 2 rate", LFO_HZ, 0.1, " Hz";
+        Lfo2Shape = "lfo2_shape", "LFO 2 shape", Kind::Enum(LFO_SHAPES), 2, "";
+        Lfo2Sync = "lfo2_sync", "LFO 2 sync", Kind::Bool, 0, "";
+        Lfo2Division = "lfo2_division", "LFO 2 division", Kind::Enum(DIVISIONS), 11, "";
+        Lfo2Pitch = "lfo2_pitch", "LFO 2 to pitch", PCT, 0, " %";
+        Lfo2Filter = "lfo2_filter", "LFO 2 to filter", PCT, 0, " %";
     }
     "LFO 3" {
-        Lfo3Rate = "lfo3_rate", "LFO 3 rate", LFO_HZ, 0.18, " Hz", Some(93);
-        Lfo3Shape = "lfo3_shape", "LFO 3 shape", Kind::Enum(LFO_SHAPES), 0, "", Some(94);
-        Lfo3Sync = "lfo3_sync", "LFO 3 sync", Kind::Bool, 0, "", None;
-        Lfo3Division = "lfo3_division", "LFO 3 division", Kind::Enum(DIVISIONS), 13, "", None;
-        Lfo3Pan = "lfo3_pan", "LFO 3 to pan", PCT, 0, " %", Some(95);
-        Lfo3Amp = "lfo3_amp", "LFO 3 to amp", PCT, 0, " %", Some(96);
+        Lfo3Rate = "lfo3_rate", "LFO 3 rate", LFO_HZ, 0.18, " Hz";
+        Lfo3Shape = "lfo3_shape", "LFO 3 shape", Kind::Enum(LFO_SHAPES), 0, "";
+        Lfo3Sync = "lfo3_sync", "LFO 3 sync", Kind::Bool, 0, "";
+        Lfo3Division = "lfo3_division", "LFO 3 division", Kind::Enum(DIVISIONS), 13, "";
+        Lfo3Pan = "lfo3_pan", "LFO 3 to pan", PCT, 0, " %";
+        Lfo3Amp = "lfo3_amp", "LFO 3 to amp", PCT, 0, " %";
     }
     "Expression" {
-        VelFilter = "vel_filter", "Velocity to filter", PCT, 30, " %", Some(97);
-        VelAmp = "vel_amp", "Velocity to amp", PCT, 70, " %", Some(98);
-        AtFilter = "at_filter", "Aftertouch to filter", PCT, 25, " %", Some(99);
-        AtVibrato = "at_vibrato", "Aftertouch to vibrato", PCT, 15, " %", Some(100);
-        KeyTrack = "keytrack", "Key tracking", PCT, 40, " %", Some(101);
+        VelFilter = "vel_filter", "Velocity to filter", PCT, 30, " %";
+        VelAmp = "vel_amp", "Velocity to amp", PCT, 70, " %";
+        AtFilter = "at_filter", "Aftertouch to filter", PCT, 25, " %";
+        AtVibrato = "at_vibrato", "Aftertouch to vibrato", PCT, 15, " %";
+        KeyTrack = "keytrack", "Key tracking", PCT, 40, " %";
     }
     "FX" {
-        Distortion = "dist", "Distortion", PCT, 0, " %", Some(102);
-        Bitcrush = "bitcrush", "Bitcrush", PCT, 0, " %", Some(103);
-        ChorusMix = "chorus_mix", "Chorus mix", PCT, 0, " %", Some(104);
-        ChorusRate = "chorus_rate", "Chorus rate", PCT, 25, " %", Some(105);
-        DelayTime = "delay_time", "Delay time", skew(10.0, 2000.0, -1.0), 375, " ms", Some(106);
-        DelaySync = "delay_sync", "Delay sync", Kind::Bool, 0, "", None;
-        DelayDivision = "delay_division", "Delay division", Kind::Enum(DIVISIONS), 7, "", None;
-        DelayFeedback = "delay_feedback", "Delay feedback", lin(0.0, 90.0), 30, " %", Some(107);
-        DelayMix = "delay_mix", "Delay mix", PCT, 0, " %", Some(108);
-        ReverbSize = "reverb_size", "Reverb size", PCT, 50, " %", Some(109);
-        ReverbMix = "reverb_mix", "Reverb mix", PCT, 10, " %", Some(110);
-        EqLow = "eq_low", "EQ low", lin(-12.0, 12.0), 0, " dB", Some(111);
-        EqMid = "eq_mid", "EQ mid", lin(-12.0, 12.0), 0, " dB", Some(112);
-        EqHigh = "eq_high", "EQ high", lin(-12.0, 12.0), 0, " dB", Some(113);
-        Compressor = "compressor", "Compressor", PCT, 0, " %", Some(114);
-        Width = "width", "Stereo width", lin(0.0, 200.0), 100, " %", Some(115);
-        Limiter = "limiter", "Output limiter", Kind::Bool, 1, "", Some(116);
+        Distortion = "dist", "Distortion", PCT, 0, " %";
+        Bitcrush = "bitcrush", "Bitcrush", PCT, 0, " %";
+        ChorusMix = "chorus_mix", "Chorus mix", PCT, 0, " %";
+        ChorusRate = "chorus_rate", "Chorus rate", PCT, 25, " %";
+        DelayTime = "delay_time", "Delay time", skew(10.0, 2000.0, -1.0), 375, " ms";
+        DelaySync = "delay_sync", "Delay sync", Kind::Bool, 0, "";
+        DelayDivision = "delay_division", "Delay division", Kind::Enum(DIVISIONS), 7, "";
+        DelayFeedback = "delay_feedback", "Delay feedback", lin(0.0, 90.0), 30, " %";
+        DelayMix = "delay_mix", "Delay mix", PCT, 0, " %";
+        ReverbSize = "reverb_size", "Reverb size", PCT, 50, " %";
+        ReverbMix = "reverb_mix", "Reverb mix", PCT, 10, " %";
+        EqLow = "eq_low", "EQ low", lin(-12.0, 12.0), 0, " dB";
+        EqMid = "eq_mid", "EQ mid", lin(-12.0, 12.0), 0, " dB";
+        EqHigh = "eq_high", "EQ high", lin(-12.0, 12.0), 0, " dB";
+        Compressor = "compressor", "Compressor", PCT, 0, " %";
+        Width = "width", "Stereo width", lin(0.0, 200.0), 100, " %";
+        Limiter = "limiter", "Output limiter", Kind::Bool, 1, "";
     }
     "Arp" {
-        ArpOn = "arp_on", "Arp", Kind::Bool, 0, "", None;
-        ArpMode = "arp_mode", "Arp mode", Kind::Enum(ARP_MODES), 0, "", None;
-        ArpDivision = "arp_division", "Arp rate", Kind::Enum(ARP_DIVISIONS), 4, "", None;
-        ArpOctaves = "arp_octaves", "Arp octaves", int(1, 4), 1, "", None;
-        ArpGate = "arp_gate", "Arp gate", lin(5.0, 100.0), 50, " %", None;
-        ArpSwing = "arp_swing", "Arp swing", lin(0.0, 50.0), 0, " %", None;
-        ArpRepeats = "arp_repeats", "Arp repeats", int(1, 4), 1, "", None;
-        ArpLatch = "arp_latch", "Arp latch", Kind::Bool, 0, "", None;
+        ArpOn = "arp_on", "Arp", Kind::Bool, 0, "";
+        ArpMode = "arp_mode", "Arp mode", Kind::Enum(ARP_MODES), 0, "";
+        ArpDivision = "arp_division", "Arp rate", Kind::Enum(ARP_DIVISIONS), 4, "";
+        ArpOctaves = "arp_octaves", "Arp octaves", int(1, 4), 1, "";
+        ArpGate = "arp_gate", "Arp gate", lin(5.0, 100.0), 50, " %";
+        ArpSwing = "arp_swing", "Arp swing", lin(0.0, 50.0), 0, " %";
+        ArpRepeats = "arp_repeats", "Arp repeats", int(1, 4), 1, "";
+        ArpLatch = "arp_latch", "Arp latch", Kind::Bool, 0, "";
     }
 }
 

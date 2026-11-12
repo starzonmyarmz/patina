@@ -1,7 +1,6 @@
 # Patina — plugin spec
 
-A polysynth plugin in Rust, grown out of the `1000Synths.jsfx` prototype
-(`~/Code/jsfx/1000-synths`, frozen as a reference). Built for one person on one
+A polysynth plugin in Rust. Built for one person on one
 Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 
 ## Decisions
@@ -10,7 +9,6 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 |---|---|
 | Formats | VST3 + CLAP via [nice-plug](https://codeberg.org/RustAudio/nice-plug). No AU, AAX or standalone. |
 | Platform | macOS, Apple Silicon only. Ad-hoc signed, installed by script. No notarization or installer. |
-| Engine | Same parameter set as the JSFX, better DSP. Presets carry over approximately, not bit-exactly. |
 | Tempo sync | LFOs and delay each have a free/sync toggle and a host-synced division. |
 | Arpeggiator | Built in, between MIDI input and the voice engine. Always tempo-synced. Saved in presets and off by default. |
 | Performance | 16 voices × up to 8 unison, under ~5% of one Apple Silicon core for a typical pad. |
@@ -21,13 +19,12 @@ Mac: Apple Silicon, REAPER, an Arturia MiniLab MK2.
 | Layout | Pages that mirror the MiniLab's 2×8 knobs: Osc, Shape, Filter, Mod, FX, Macro, Arp. |
 | Hardware | Knobs in relative mode. Pad bank 1 = navigation, pad bank 2 = notes. |
 | UI | Native webview (WKWebView) with HTML/CSS. OP-1 light look. |
-| Repo | This repo. The JSFX repo stays as a frozen reference. |
 
 ## v1 scope
 
 All of these are v1:
 
-1. Full engine and effects (every JSFX module, plus tempo sync).
+1. Full engine and effects, plus tempo sync.
 2. Finished skeuomorphic UI.
 3. Preset browser with categories, tags, search and favorites.
 
@@ -58,8 +55,6 @@ Each step ends with something that loads and plays in REAPER.
 
 Every parameter has a stable string ID (`osc1_type`, `flt_cutoff`, …) that is
 never renamed or reused, because host automation and saved presets refer to it.
-Each entry also records the JSFX slider number it came from, so the old bank can
-be imported.
 
 The parameter table lives in `plugin/src/params.rs`. Each entry has: ID, display
 name, range, default, kind (float / int / enum / bool), unit, page and knob slot.
