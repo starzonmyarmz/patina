@@ -100,6 +100,7 @@ if ((dry_run)); then
 fi
 
 if ((!assume_yes)); then
+  [[ -t 0 ]] || die "no terminal to confirm in: rerun with -y"
   read -r -p "Release v$next? [y/N] " answer
   [[ $answer == [yY] ]] || die "stopped"
 fi
