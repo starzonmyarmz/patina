@@ -10,6 +10,10 @@ permissions:
 concurrency:
   group: release-${{ github.ref_name }}
 
+env:
+  CRATE: patina
+  PLUGIN: Patina
+
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -37,14 +41,15 @@ jobs:
       - uses: actions/checkout@v7
       - run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
-      - run: cargo xtask bundle-universal patina --release
-      - run: scripts/clap-validator.sh target/bundled/Patina.clap
+      - run: cargo test --workspace
+      - run: cargo xtask bundle-universal "$CRATE" --release
+      - run: scripts/clap-validator.sh "target/bundled/$PLUGIN.clap"
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Zip
         run: |
           mkdir -p stage/macOS dist
-          cp -R target/bundled/Patina.vst3 target/bundled/Patina.clap stage/macOS/
+          cp -R "target/bundled/$PLUGIN.vst3" "target/bundled/$PLUGIN.clap" stage/macOS/
           ditto -c -k --norsrc --noextattr --noacl --keepParent stage/macOS dist/macos.zip
       - uses: actions/upload-artifact@v7
         with:
@@ -57,8 +62,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
-      - run: cargo xtask bundle patina --release
-      - run: scripts/clap-validator.sh target/bundled/Patina.clap
+      - run: cargo xtask bundle "$CRATE" --release
+        shell: bash
+      - run: scripts/clap-validator.sh "target/bundled/$PLUGIN.clap"
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,7 +72,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force stage/Windows, dist
-          Copy-Item -Recurse target/bundled/Patina.vst3, target/bundled/Patina.clap stage/Windows
+          Copy-Item -Recurse "target/bundled/$env:PLUGIN.vst3", "target/bundled/$env:PLUGIN.clap" stage/Windows
           Compress-Archive -Path stage/Windows -DestinationPath dist/windows.zip
       - uses: actions/upload-artifact@v7
         with:
@@ -90,16 +96,17 @@ jobs:
           unzip -q dist/macos.zip -d stage
           unzip -q dist/windows.zip -d stage
           cp INSTALL.txt stage/
-          cd stage
-          zip -qry "../Patina-$VERSION.zip" INSTALL.txt macOS Windows
+          (cd stage && zip -qry "../$CRATE-$VERSION.zip" INSTALL.txt macOS Windows)
+          sha256sum "$CRATE-$VERSION.zip" > SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          scripts/changelog-notes "$VERSION" > notes.md
           prerelease=
           case "$VERSION" in *-*) prerelease=--prerelease ;; esac
-          gh release create "$GITHUB_REF_NAME" "Patina-$VERSION.zip" \
-            --title "Patina $VERSION" \
-            --generate-notes \
+          gh release create "$GITHUB_REF_NAME" "$CRATE-$VERSION.zip" SHA256SUMS \
+            --title "$PLUGIN $VERSION" \
+            --notes-file notes.md \
             --verify-tag $prerelease

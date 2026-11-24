@@ -1,55 +1,37 @@
 # Patina
 
-A polysynth plugin (VST3 + CLAP) for macOS and Windows, and a Mac app, in
-Rust, built with [nice-plug](https://codeberg.org/RustAudio/nice-plug), pinned to
-[a fork](https://github.com/starzonmyarmz/nice-plug/tree/patina) that adds one
-commit: `ActivateContext::gui_context()`, so MIDI controllers can set
-parameters before the editor opens. See [SPEC.md](SPEC.md) for the design and
-build order.
+A polysynth plugin (VST3 + CLAP) and Mac app in Rust
 
 ![Patina’s editor showing the Gritty Dry Saw Lead preset](docs/screenshot-1.0.0.jpg)
 
+The plugin runs on macOS and Windows. It's built with
+[nice-plug](https://codeberg.org/RustAudio/nice-plug), pinned to
+[a fork](https://github.com/starzonmyarmz/nice-plug/tree/patina) that adds one
+commit: `ActivateContext::gui_context()`, so MIDI controllers can set
+parameters before the editor opens.
+
 ## Download
 
-Download `Patina-<version>.zip` from the
+Download `patina-<version>.zip` from the
 [latest release](https://github.com/starzonmyarmz/patina/releases/latest). It
 holds VST3 and CLAP for macOS (Apple Silicon and Intel) and Windows, and
 [INSTALL.txt](INSTALL.txt), which says where to copy them and what to do when
 macOS or Windows flags them as unsafe.
 
-## Releasing
-
-Versions follow [semver](https://semver.org). The version lives once, in the
-root `Cargo.toml`, and it’s what hosts see as the plugin’s version.
-
-- **Major**: anything that breaks saved projects or presets, such as
-  renaming or removing a parameter ID or changing a parameter’s range.
-- **Minor**: new features, parameters or factory presets.
-- **Patch**: fixes that don’t change how saved projects sound.
-
-To release, bump the version, commit, then tag and push:
-
-```sh
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-The tag starts the release workflow, which checks that the tag matches
-`Cargo.toml`, builds both platforms and publishes `Patina-1.1.0.zip`. A
-version with a suffix, like `1.1.0-beta.1`, is published as a prerelease.
-
 ## Build and install on macOS
 
 ```sh
-./scripts/install.sh
+scripts/install.sh
 ```
 
 Builds release bundles and copies them, ad-hoc signed, to
-`~/Library/Audio/Plug-Ins/VST3` and `~/Library/Audio/Plug-Ins/CLAP`. In
-REAPER, rescan plugins (**Preferences → Plug-ins → VST/CLAP → Re-scan**) and
-add **Patina** to a track. Prefer the CLAP version.
+`~/Library/Audio/Plug-Ins/VST3` and `~/Library/Audio/Plug-Ins/CLAP`, as
+`X.Y.Z-dev+<sha>` so hosts show which build is installed. In REAPER, rescan
+plugins (**Preferences → Plug-ins → VST/CLAP → Re-scan**) and add **Patina**
+to a track. Prefer the CLAP version.
 
-It also builds `/Applications/Patina.app`, the same synth without a DAW.
+It then runs `scripts/install-extra.sh`, which builds
+`/Applications/Patina.app`, the same synth without a DAW.
 
 ## The app
 
@@ -124,8 +106,9 @@ parameter table, page layout and factory bank.
 ## Test
 
 ```sh
-cargo test -p patina
+cargo test --workspace
 cargo test --release -p patina --test engine -- --ignored --nocapture   # CPU budget
+scripts/clap-validator.sh target/bundled/Patina.clap
 ```
 
 ## Factory presets
@@ -161,3 +144,22 @@ same loudness, and checks that all macros at full stay clean.
 | `presetgen/` | Factory bank generator and quality gate. |
 | `app/` | The Mac app: device choice, then nice-plug's standalone wrapper. |
 | `plugin/src/app.rs` | What the editor needs from the app: device lists, relaunch, saving the sound. |
+
+## CI and releases
+
+- `check.yml` runs on pushes to main and on PRs: rustfmt and clippy, the
+  workspace tests and clap-validator on macOS, and clap-validator on the
+  Windows build. `changelog.yml` checks that a PR with `feat`, `fix` or
+  `perf` commits adds lines to `CHANGELOG.md`.
+- `scripts/release` releases: it works out the version from the commits
+  since the last release (breaking → major; `feat` → minor; `fix`, `perf`,
+  `revert` → patch), finalizes `CHANGELOG.md`, commits, tags `vX.Y.Z` and
+  pushes. Add `--dry-run` to only look. Breaking means anything that breaks
+  saved projects or presets, such as renaming or removing a parameter ID or
+  changing a parameter's range.
+- `release.yml` runs on that tag. It checks the tag matches `Cargo.toml`,
+  builds a universal macOS bundle and a Windows bundle, validates both, and
+  publishes `patina-X.Y.Z.zip` with `INSTALL.txt` and `SHA256SUMS`, with the
+  changelog section as the notes. A version with a suffix, like
+  `1.2.0-beta.1`, is published as a prerelease. The Mac app isn't released;
+  `scripts/install.sh` builds it locally.

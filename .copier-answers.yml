@@ -1,0 +1,18 @@
+_commit: 826ee24
+_src_path: gh:starzonmyarmz/project-kit
+app_id: com.iamdanielmarino.patina
+author: Daniel Marino
+description: A polysynth plugin (VST3 + CLAP) and Mac app in Rust
+design_doc: true
+display_name: Patina
+name: patina
+oss_community: false
+owner: starzonmyarmz
+public: true
+ships:
+- github-release
+stack: vst-plugin
+starter: false
+voice_doc: false
+vst3_class_id: PatinaDanielMari
+year: 2026

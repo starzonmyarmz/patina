@@ -1,5 +1,5 @@
 #!/bin/sh
-# Usage: scripts/clap-validator.sh target/bundled/Patina.clap
+# Usage: scripts/clap-validator.sh target/bundled/<Name>.clap
 set -eu
 
 version=0.4.1
