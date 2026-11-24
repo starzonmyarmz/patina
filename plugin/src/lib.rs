@@ -146,7 +146,7 @@ fn play(engine: &mut Engine, event: Event) {
 
 impl Plugin for Patina {
     const NAME: &'static str = "Patina";
-    const VENDOR: &'static str = "Dan Marino";
+    const VENDOR: &'static str = "Daniel Marino";
     const URL: &'static str = "";
     const EMAIL: &'static str = "";
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -279,7 +279,7 @@ impl Plugin for Patina {
 }
 
 impl ClapPlugin for Patina {
-    const CLAP_ID: &'static str = "com.danmarino.patina";
+    const CLAP_ID: &'static str = "com.iamdanielmarino.patina";
     const CLAP_DESCRIPTION: Option<&'static str> = Some("A polysynth with a curated bank of presets");
     const CLAP_MANUAL_URL: Option<&'static str> = None;
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
@@ -288,7 +288,7 @@ impl ClapPlugin for Patina {
 }
 
 impl Vst3Plugin for Patina {
-    const VST3_CLASS_ID: [u8; 16] = *b"PatinaSynthDnMrn";
+    const VST3_CLASS_ID: [u8; 16] = *b"PatinaDanielMari";
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[Vst3SubCategory::Instrument, Vst3SubCategory::Synth];
 }
 

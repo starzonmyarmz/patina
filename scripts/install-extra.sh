@@ -26,7 +26,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleName</key><string>Patina</string>
   <key>CFBundleDisplayName</key><string>Patina</string>
-  <key>CFBundleIdentifier</key><string>com.danmarino.patina.app</string>
+  <key>CFBundleIdentifier</key><string>com.iamdanielmarino.patina.app</string>
   <key>CFBundleExecutable</key><string>Patina</string>
   <key>CFBundleIconFile</key><string>Patina</string>
   <key>CFBundlePackageType</key><string>APPL</string>

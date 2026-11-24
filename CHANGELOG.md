@@ -8,6 +8,8 @@ What changed for people using Patina, newest first. Code-only work stays in the 
 - A MIDI Control Center template (`docs/Patina.minilabmk2`), so setting up the MiniLab is one import instead of about 40 controls by hand.
 
 ### Changed
+- Patina has new plugin IDs and lists its maker as Daniel Marino. Hosts see this version as a new plugin, so projects saved with 1.x need Patina added again.
+- The Mac app has a new bundle ID, so macOS treats it as a new app and forgets any permissions or system settings you gave it. The sound it reopens with is kept.
 - Patina only listens to the MiniLab now and never writes to it. Store the setup in one of the device's memories with MIDI Control Center; the pad lights are gone.
 - The release download is now `patina-<version>.zip`, with a `SHA256SUMS` file next to it.
 
