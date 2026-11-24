@@ -34,12 +34,12 @@ fn play(values: &PlainValues, notes: &[u8], seconds: f32) -> (Engine, Vec<f32>, 
 
 #[test]
 fn every_oscillator_and_filter_makes_bounded_sound() {
-    for osc in 0..OSC_TYPES.len() {
-        for flt in 0..FILTER_TYPES.len() {
+    for (osc, osc_name) in OSC_TYPES.iter().enumerate() {
+        for (flt, flt_name) in FILTER_TYPES.iter().enumerate() {
             let mut v = PlainValues::default();
             v.set(Pid::Osc1Type, osc as f32).set(Pid::Osc2Type, osc as f32).set(Pid::FilterType, flt as f32);
             let (_, l, r) = play(&v, &[48, 55, 64], 0.5);
-            let label = format!("{} / {}", OSC_TYPES[osc], FILTER_TYPES[flt]);
+            let label = format!("{osc_name} / {flt_name}");
             assert!(l.iter().chain(&r).all(|x| x.is_finite()), "{label}: non-finite output");
             let p = peak(&l).max(peak(&r));
             assert!(p > 1e-3, "{label}: silent ({p})");

@@ -246,7 +246,7 @@ mod tests {
         let preset = Preset::capture("Glass/Choir", "Pad", &PlainValues::default(), &[]);
         let key = lib.save(&preset).unwrap();
         assert_eq!(key, "user/Glass_Choir");
-        assert_eq!(lib.get(&key).map(|(p, s)| (p, s)), Some((&preset, Source::User)));
+        assert_eq!(lib.get(&key), Some((&preset, Source::User)));
         let session = Session::from_preset(&preset, Source::User);
         assert_eq!(lib.key_of(&session).as_deref(), Some(key.as_str()));
 

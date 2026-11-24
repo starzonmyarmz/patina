@@ -63,12 +63,9 @@ pub fn save(params: &ThousandParams, tempo: Option<f32>, host: &impl Host) {
 
 /// Puts back the last saved sound and returns its tempo.
 pub fn restore(params: &ThousandParams, host: &mut impl Host) -> Option<f32> {
-    let Some(snapshot) = std::fs::read_to_string(snapshot_path())
+    let snapshot = std::fs::read_to_string(snapshot_path())
         .ok()
-        .and_then(|json| serde_json::from_str::<Snapshot>(&json).ok())
-    else {
-        return None;
-    };
+        .and_then(|json| serde_json::from_str::<Snapshot>(&json).ok())?;
     apply(host, &snapshot.current.values());
     params.set_session(snapshot.session);
     snapshot.tempo

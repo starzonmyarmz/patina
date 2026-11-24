@@ -100,7 +100,7 @@ fn harmonic(shape: usize, h: usize) -> f64 {
         SAW => -2.0 / (std::f64::consts::PI * h),
         SQUARE if odd => 4.0 / (std::f64::consts::PI * h),
         TRIANGLE if odd => {
-            let sign = if (h as usize / 2) % 2 == 0 { 1.0 } else { -1.0 };
+            let sign = if (h as usize / 2).is_multiple_of(2) { 1.0 } else { -1.0 };
             8.0 / (std::f64::consts::PI.powi(2) * h * h) * sign
         }
         ORGAN => match h as usize {

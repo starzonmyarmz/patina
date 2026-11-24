@@ -79,6 +79,12 @@ pub struct Comb {
     pos: usize,
 }
 
+impl Default for Comb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Comb {
     pub fn new() -> Self {
         Self { buf: vec![0.0; COMB_LEN].into_boxed_slice(), pos: 0 }
@@ -149,6 +155,12 @@ pub struct VoiceFilter {
     ladder: Ladder,
     comb: Comb,
     formant: Formant,
+}
+
+impl Default for VoiceFilter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl VoiceFilter {
