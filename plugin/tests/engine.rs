@@ -1,7 +1,7 @@
-use std::time::Instant;
 use patina::engine::{Engine, Transport, CHUNK};
 use patina::macros::{MacroMatrix, Target};
 use patina::params::{Pid, PlainValues, FILTER_TYPES, OSC_TYPES};
+use std::time::Instant;
 
 const SR: f32 = 48_000.0;
 

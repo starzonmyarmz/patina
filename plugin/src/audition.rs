@@ -43,8 +43,10 @@ fn build() -> Vec<Phrase> {
     };
     let lead = {
         let mut n = line(0.0, 0.5, 0.45, &[60, 63, 67, 70], &[0.9, 0.7]);
-        n.extend([(2.0, 1.5, 72), (3.5, 0.5, 70), (4.0, 1.0, 67), (5.0, 1.0, 63), (6.0, 0.5, 65), (6.5, 0.5, 67)]
-            .map(|(at, len, key)| Note { at, len, key, velocity: 0.8 }));
+        n.extend(
+            [(2.0, 1.5, 72), (3.5, 0.5, 70), (4.0, 1.0, 67), (5.0, 1.0, 63), (6.0, 0.5, 65), (6.5, 0.5, 67)]
+                .map(|(at, len, key)| Note { at, len, key, velocity: 0.8 }),
+        );
         n.push(Note { at: 7.0, len: 3.5, key: 72, velocity: 1.0 });
         Phrase { beats: 12.0, notes: n }
     };
@@ -84,7 +86,10 @@ fn build() -> Vec<Phrase> {
         Phrase { beats: 12.0, notes: n }
     };
     let texture = {
-        let n = vec![Note { at: 0.0, len: 12.0, key: 48, velocity: 0.8 }, Note { at: 4.0, len: 8.0, key: 55, velocity: 0.7 }];
+        let n = vec![
+            Note { at: 0.0, len: 12.0, key: 48, velocity: 0.8 },
+            Note { at: 4.0, len: 8.0, key: 55, velocity: 0.7 },
+        ];
         Phrase { beats: 16.0, notes: n }
     };
     vec![bass, lead, pad, keys, pluck, bell, brass, texture]

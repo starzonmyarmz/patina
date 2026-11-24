@@ -78,11 +78,17 @@ impl KnobMode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Control {
-    Knob { index: usize, ticks: i32 },
+    Knob {
+        index: usize,
+        ticks: i32,
+    },
     /// A pad in bank 1 went down.
     Pad(usize),
     /// Knob 1 (index 0) or knob 9 (index 1) was pressed or released.
-    Click { index: usize, down: bool },
+    Click {
+        index: usize,
+        down: bool,
+    },
 }
 
 pub fn classify(cc: u8, value: u8, mode: KnobMode) -> Option<Control> {

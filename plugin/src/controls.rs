@@ -328,7 +328,13 @@ impl Controls {
     }
 
     /// Loads the next preset in the browser's order that `wanted` accepts.
-    fn step_to(&self, params: &ThousandParams, step: i32, host: &mut impl Host, wanted: impl Fn(&Library, &str) -> bool) {
+    fn step_to(
+        &self,
+        params: &ThousandParams,
+        step: i32,
+        host: &mut impl Host,
+        wanted: impl Fn(&Library, &str) -> bool,
+    ) {
         let library = self.library();
         let order = lock(&self.order).clone();
         let keys = if order.is_empty() { library.keys() } else { order };

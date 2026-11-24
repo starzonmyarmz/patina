@@ -99,4 +99,3 @@ pub fn normalize(values: &mut PlainValues, matrix: MacroMatrix, notes: &[u8], ho
     }
     Ok(final_db)
 }
-

@@ -8,8 +8,15 @@ use std::sync::{Arc, Mutex};
 
 pub enum Kind {
     /// `skew` is the exponent passed to `FloatRange::skew_factor`; 0 is linear.
-    Float { min: f32, max: f32, skew: f32 },
-    Int { min: i32, max: i32 },
+    Float {
+        min: f32,
+        max: f32,
+        skew: f32,
+    },
+    Int {
+        min: i32,
+        max: i32,
+    },
     Enum(&'static [&'static str]),
     Bool,
 }
@@ -40,13 +47,11 @@ pub const OSC_TYPES: &[&str] = &["Sine", "Saw", "Square", "Triangle", "Wavetable
 pub const FILTER_TYPES: &[&str] = &["Lowpass", "Ladder", "Comb", "Formant", "Off"];
 pub const LFO_SHAPES: &[&str] = &["Sine", "Square", "Triangle", "S&H"];
 pub const DIVISIONS: &[&str] = &[
-    "1/32T", "1/32", "1/16T", "1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2",
-    "1/2D", "1 bar", "2 bars", "4 bars",
+    "1/32T", "1/32", "1/16T", "1/16", "1/16D", "1/8T", "1/8", "1/8D", "1/4T", "1/4", "1/4D", "1/2", "1/2D", "1 bar",
+    "2 bars", "4 bars",
 ];
-pub const DIVISION_BEATS: &[f32] = &[
-    1.0 / 12.0, 0.125, 1.0 / 6.0, 0.25, 0.375, 1.0 / 3.0, 0.5, 0.75, 2.0 / 3.0, 1.0, 1.5, 2.0, 3.0,
-    4.0, 8.0, 16.0,
-];
+pub const DIVISION_BEATS: &[f32] =
+    &[1.0 / 12.0, 0.125, 1.0 / 6.0, 0.25, 0.375, 1.0 / 3.0, 0.5, 0.75, 2.0 / 3.0, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0];
 pub const ARP_MODES: &[&str] = &["Up", "Down", "Up-down", "Down-up", "As played", "Random", "Chord"];
 pub const ARP_DIVISIONS: &[&str] = &["1/4", "1/4T", "1/8", "1/8T", "1/16", "1/16T", "1/32"];
 pub const ARP_DIVISION_BEATS: &[f32] = &[1.0, 2.0 / 3.0, 0.5, 1.0 / 3.0, 0.25, 1.0 / 6.0, 0.125];
@@ -235,7 +240,9 @@ impl Spec {
         let (min, max) = self.bounds();
         let n = normalized.clamp(0.0, 1.0);
         match self.kind {
-            Kind::Float { skew, .. } if skew != 0.0 => n.powf(FloatRange::skew_factor(skew).recip()) * (max - min) + min,
+            Kind::Float { skew, .. } if skew != 0.0 => {
+                n.powf(FloatRange::skew_factor(skew).recip()) * (max - min) + min
+            }
             Kind::Float { .. } => n * (max - min) + min,
             _ => (n * (max - min) + min).round(),
         }
@@ -504,7 +511,10 @@ mod tests {
             name: "Bloom Pad".into(),
             category: "Pad".into(),
             source: Source::User,
-            macros: vec![MacroDef { name: "Open".into(), targets: vec![MacroTarget { param: "flt_cutoff".into(), amount: 0.4 }] }],
+            macros: vec![MacroDef {
+                name: "Open".into(),
+                targets: vec![MacroTarget { param: "flt_cutoff".into(), amount: 0.4 }],
+            }],
             saved: None,
         };
         let b = ThousandParams::default();

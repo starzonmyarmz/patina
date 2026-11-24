@@ -3,8 +3,7 @@ use crate::controls::Controls;
 use crate::params::ThousandParams;
 use baseview::dpi::LogicalSize;
 use baseview::{
-    Event, EventStatus, HandlerError, TimerHandle, Window, WindowContext, WindowHandler, WindowSettings,
-    WindowSize,
+    Event, EventStatus, HandlerError, TimerHandle, Window, WindowContext, WindowHandler, WindowSettings, WindowSize,
 };
 use keyboard_types::{KeyState, Modifiers};
 use nice_plug::context::gui::GuiContext;

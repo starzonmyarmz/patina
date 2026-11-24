@@ -1,11 +1,11 @@
 //! The editor's message protocol, kept apart from the webview so it can be
 //! tested and so a browser mock can be generated from it.
 
-use crate::layout::PAGES;
 use crate::controls::Controls;
+use crate::layout::PAGES;
 use crate::library::Library;
-use crate::minilab::KnobMode;
 use crate::macros::MACROS;
+use crate::minilab::KnobMode;
 use crate::params::{Kind, Pid, PlainValues, ThousandParams, Values, COUNT};
 use crate::presets::{Preset, Session, Source};
 use crate::ratings::Verdict;
@@ -141,7 +141,8 @@ impl Bridge {
             }
             ("filter", _) => self.controls.set_filter(msg["filter"].as_str().unwrap_or("all")),
             ("order", _) => {
-                let keys = msg["keys"].as_array().map(|k| k.iter().filter_map(|k| k.as_str().map(String::from)).collect());
+                let keys =
+                    msg["keys"].as_array().map(|k| k.iter().filter_map(|k| k.as_str().map(String::from)).collect());
                 self.controls.set_order(keys.unwrap_or_default());
             }
             ("knobMode", _) => {
@@ -210,7 +211,8 @@ impl Bridge {
                 let last = &mut self.sent[pid as usize];
                 if *last != value {
                     *last = value;
-                    changes.push(json!({ "id": pid.spec().id, "value": value, "text": self.params.display(pid, value) }));
+                    changes
+                        .push(json!({ "id": pid.spec().id, "value": value, "text": self.params.display(pid, value) }));
                 }
             }
             if !changes.is_empty() {
@@ -413,8 +415,11 @@ pub fn describe_pages() -> Vec<Value> {
                 .map(|row| {
                     row.iter()
                         .map(|s| {
-                            let knobs: Vec<Value> =
-                                s.knobs.iter().map(|(pid, label)| json!({ "id": pid.spec().id, "label": label })).collect();
+                            let knobs: Vec<Value> = s
+                                .knobs
+                                .iter()
+                                .map(|(pid, label)| json!({ "id": pid.spec().id, "label": label }))
+                                .collect();
                             json!({ "title": s.title, "knobs": knobs })
                         })
                         .collect()
@@ -438,7 +443,10 @@ mod tests {
 
     impl FakeHost {
         fn new() -> Self {
-            Self { values: std::array::from_fn(|i| Pid::ALL[i].spec().normalize(Pid::ALL[i].spec().default)), gestures: 0 }
+            Self {
+                values: std::array::from_fn(|i| Pid::ALL[i].spec().normalize(Pid::ALL[i].spec().default)),
+                gestures: 0,
+            }
         }
     }
 
@@ -580,7 +588,10 @@ mod tests {
         let out = send(&mut bridge, &mut host, json!({ "type": "save", "name": "My Pad", "category": "" }));
         assert!((host.normalized(Pid::Resonance) - 0.9).abs() < 1e-6);
         let s = session(&out);
-        assert_eq!((s["name"].as_str(), s["source"].as_str(), s["dirty"].as_bool()), (Some("My Pad"), Some("user"), Some(false)));
+        assert_eq!(
+            (s["name"].as_str(), s["source"].as_str(), s["dirty"].as_bool()),
+            (Some("My Pad"), Some("user"), Some(false))
+        );
         assert_eq!(s["category"], crate::presets::factory()[2].category.as_str());
         let listed = out.iter().find(|m| m["type"] == "presets").unwrap();
         assert!(listed["presets"].as_array().unwrap().iter().any(|p| p["key"] == "user/My Pad"));

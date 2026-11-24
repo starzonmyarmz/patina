@@ -2,9 +2,9 @@ pub mod app;
 pub mod arp;
 pub mod audition;
 pub mod bridge;
-pub mod controls;
 #[cfg(target_os = "macos")]
 mod chrome;
+pub mod controls;
 mod editor;
 pub mod engine;
 pub mod layout;
@@ -17,11 +17,11 @@ pub mod ratings;
 
 use arp::Arp;
 use audition::{Event, Events, Player};
+use controls::Controls;
 use engine::{Engine, Transport, CHUNK};
+use library::Library;
 use nice_plug::midi::Key;
 use nice_plug::prelude::*;
-use controls::Controls;
-use library::Library;
 use params::ThousandParams;
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -67,10 +67,15 @@ impl Patina {
         let engine = &mut self.engine;
         let out = &mut |e| play(engine, e);
         match event {
-            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. } if self.controls.midi_note(note, velocity > 0.0) => {}
+            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. }
+                if self.controls.midi_note(note, velocity > 0.0) => {}
             NoteEvent::NoteOff { key: Key::Number(note), .. } if self.controls.midi_note(note, false) => {}
-            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. } if velocity > 0.0 => self.arp.key_on(at, note, velocity, out),
-            NoteEvent::NoteOn { key: Key::Number(note), .. } | NoteEvent::NoteOff { key: Key::Number(note), .. } => self.arp.key_off(note, out),
+            NoteEvent::NoteOn { key: Key::Number(note), velocity, .. } if velocity > 0.0 => {
+                self.arp.key_on(at, note, velocity, out)
+            }
+            NoteEvent::NoteOn { key: Key::Number(note), .. } | NoteEvent::NoteOff { key: Key::Number(note), .. } => {
+                self.arp.key_off(note, out)
+            }
             NoteEvent::MidiPitchBend { value, .. } => self.engine.set_pitch_bend(value),
             NoteEvent::MidiChannelPressure { pressure, .. } => self.engine.set_aftertouch(pressure),
             NoteEvent::MidiCC { cc, value, .. } if self.controls.midi_cc(cc, (value * 127.0).round() as u8) => {}
@@ -278,7 +283,8 @@ impl ClapPlugin for Patina {
     const CLAP_DESCRIPTION: Option<&'static str> = Some("A polysynth with a curated bank of presets");
     const CLAP_MANUAL_URL: Option<&'static str> = None;
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
-    const CLAP_FEATURES: &'static [ClapFeature] = &[ClapFeature::Instrument, ClapFeature::Synthesizer, ClapFeature::Stereo];
+    const CLAP_FEATURES: &'static [ClapFeature] =
+        &[ClapFeature::Instrument, ClapFeature::Synthesizer, ClapFeature::Stereo];
 }
 
 impl Vst3Plugin for Patina {

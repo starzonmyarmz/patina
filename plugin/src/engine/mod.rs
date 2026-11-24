@@ -138,7 +138,13 @@ impl Patch {
             amp: env(Pid::AmpAttack, Pid::AmpDecay, Pid::AmpSustain, Pid::AmpRelease),
             flt: env(Pid::FilterAttack, Pid::FilterDecay, Pid::FilterSustain, Pid::FilterRelease),
             modenv: env(Pid::ModAttack, Pid::ModDecay, Pid::ModSustain, Pid::ModRelease),
-            pitch: EnvCoeffs::new(p.get(Pid::PitchEnvAttack), p.get(Pid::PitchEnvDecay), 0.0, p.get(Pid::AmpRelease), sr),
+            pitch: EnvCoeffs::new(
+                p.get(Pid::PitchEnvAttack),
+                p.get(Pid::PitchEnvDecay),
+                0.0,
+                p.get(Pid::AmpRelease),
+                sr,
+            ),
             pitch_on: p.on(Pid::PitchEnv),
             pitch_amt: p.get(Pid::PitchEnvAmount),
             lfo_shape: [p.index(Pid::Lfo1Shape), p.index(Pid::Lfo2Shape), p.index(Pid::Lfo3Shape)],
@@ -209,7 +215,9 @@ impl Engine {
             sr,
             inv_sr: 1.0 / sr,
             tables: Tables::new(sr),
-            voices: (0..MAX_VOICES).map(|i| Voice::new(0x9E37_79B9 ^ (i as u32 + 1).wrapping_mul(0x85EB_CA6B))).collect(),
+            voices: (0..MAX_VOICES)
+                .map(|i| Voice::new(0x9E37_79B9 ^ (i as u32 + 1).wrapping_mul(0x85EB_CA6B)))
+                .collect(),
             patch: Patch::default(),
             fx: Fx::new(sr),
             fx_patch: FxPatch::default(),

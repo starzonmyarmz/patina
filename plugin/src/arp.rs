@@ -30,7 +30,8 @@ pub enum Mode {
 }
 
 impl Mode {
-    const ALL: [Mode; 7] = [Mode::Up, Mode::Down, Mode::UpDown, Mode::DownUp, Mode::AsPlayed, Mode::Random, Mode::Chord];
+    const ALL: [Mode; 7] =
+        [Mode::Up, Mode::Down, Mode::UpDown, Mode::DownUp, Mode::AsPlayed, Mode::Random, Mode::Chord];
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -199,7 +200,14 @@ impl Arp {
     }
 
     /// Call at the start of every block, before any other call for it.
-    pub fn begin(&mut self, len: usize, sample_rate: f32, transport: Transport, settings: Settings, out: &mut impl FnMut(Event)) {
+    pub fn begin(
+        &mut self,
+        len: usize,
+        sample_rate: f32,
+        transport: Transport,
+        settings: Settings,
+        out: &mut impl FnMut(Event),
+    ) {
         self.clock += std::mem::replace(&mut self.block, len) as i64;
         let tempo = transport.tempo.filter(|t| *t > 0.0).unwrap_or(DEFAULT_TEMPO);
         self.samples_per_beat = sample_rate as f64 * 60.0 / tempo;
@@ -332,7 +340,11 @@ impl Arp {
     }
 
     fn swing(&self, step: i64) -> f64 {
-        if step.rem_euclid(2) == 1 { self.settings.swing } else { 0.0 }
+        if step.rem_euclid(2) == 1 {
+            self.settings.swing
+        } else {
+            0.0
+        }
     }
 
     fn grid_beat(&self, step: i64) -> f64 {
@@ -501,7 +513,14 @@ mod tests {
         fn new(change: impl FnOnce(&mut Settings)) -> Self {
             let mut settings = Settings { on: true, ..Settings::default() };
             change(&mut settings);
-            Self { arp: Arp::default(), settings, transport: Transport::default(), block: 512, now: 0, events: Vec::new() }
+            Self {
+                arp: Arp::default(),
+                settings,
+                transport: Transport::default(),
+                block: 512,
+                now: 0,
+                events: Vec::new(),
+            }
         }
 
         /// Runs until `until`, applying `inputs` (absolute sample, input) on
@@ -745,7 +764,12 @@ mod tests {
         rig.run(on + 300 + GATHER + 1, &[]);
         assert_eq!(
             rig.events[2..],
-            [(on + 150, Event::On(64, 0.8)), (on + 300, Event::Off(60)), (on + 300, Event::Off(64)), (on + 300 + GATHER, Event::On(60, 0.8))]
+            [
+                (on + 150, Event::On(64, 0.8)),
+                (on + 300, Event::Off(60)),
+                (on + 300, Event::Off(64)),
+                (on + 300 + GATHER, Event::On(60, 0.8))
+            ]
         );
     }
 

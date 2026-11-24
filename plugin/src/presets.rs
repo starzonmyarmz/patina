@@ -101,9 +101,10 @@ impl Preset {
 pub fn matrix_from(macros: &[MacroDef]) -> MacroMatrix {
     let mut m = MacroMatrix::default();
     for (slot, def) in m.0.iter_mut().zip(macros) {
-        let targets = def.targets.iter().filter_map(|t| {
-            Pid::from_id(&t.param).map(|pid| Target { pid, amount: t.amount.clamp(-1.0, 1.0) })
-        });
+        let targets = def
+            .targets
+            .iter()
+            .filter_map(|t| Pid::from_id(&t.param).map(|pid| Target { pid, amount: t.amount.clamp(-1.0, 1.0) }));
         for (s, t) in slot.iter_mut().zip(targets.take(TARGETS_PER_MACRO)) {
             *s = Some(t);
         }
@@ -209,10 +210,8 @@ pub fn save_to(dir: &Path, preset: &Preset) -> std::io::Result<PathBuf> {
 }
 
 pub(crate) fn file_stem(name: &str) -> String {
-    let cleaned: String = name
-        .chars()
-        .map(|c| if c.is_alphanumeric() || " -_()'".contains(c) { c } else { '_' })
-        .collect();
+    let cleaned: String =
+        name.chars().map(|c| if c.is_alphanumeric() || " -_()'".contains(c) { c } else { '_' }).collect();
     let trimmed = cleaned.trim();
     if trimmed.is_empty() {
         "Untitled".into()
@@ -253,7 +252,8 @@ mod tests {
 
     #[test]
     fn missing_and_bad_values_fall_back() {
-        let json = r#"{"format":1,"name":"x","category":"Bass","params":{"flt_res":250,"osc2_type":"Kazoo","unison":"lots"}}"#;
+        let json =
+            r#"{"format":1,"name":"x","category":"Bass","params":{"flt_res":250,"osc2_type":"Kazoo","unison":"lots"}}"#;
         let p: Preset = serde_json::from_str(json).unwrap();
         let v = p.values();
         assert_eq!(v.get(Pid::Resonance), 100.0);

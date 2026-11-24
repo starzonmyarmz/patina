@@ -54,7 +54,15 @@ pub const PAGES: &[Page] = &[
         rows: [
             &[
                 s("Shape", &[(WavetablePos, "Table"), (PwmWidth, "Width"), (SupersawDetune, "Spread")]),
-                s("Pitch env", &[(PitchEnv, "On"), (PitchEnvAmount, "Amount"), (PitchEnvAttack, "Attack"), (PitchEnvDecay, "Decay")]),
+                s(
+                    "Pitch env",
+                    &[
+                        (PitchEnv, "On"),
+                        (PitchEnvAmount, "Amount"),
+                        (PitchEnvAttack, "Attack"),
+                        (PitchEnvDecay, "Decay"),
+                    ],
+                ),
             ],
             &[
                 s("Expression", &[(VelAmp, "Vel›amp"), (AtFilter, "AT›filter"), (AtVibrato, "AT›vibrato")]),
@@ -68,13 +76,31 @@ pub const PAGES: &[Page] = &[
             &[
                 s(
                     "Filter",
-                    &[(FilterType, "Type"), (Cutoff, "Cutoff"), (Resonance, "Reso"), (FilterDrive, "Drive"), (FilterEnvAmount, "Env"), (Vowel, "Vowel")],
+                    &[
+                        (FilterType, "Type"),
+                        (Cutoff, "Cutoff"),
+                        (Resonance, "Reso"),
+                        (FilterDrive, "Drive"),
+                        (FilterEnvAmount, "Env"),
+                        (Vowel, "Vowel"),
+                    ],
                 ),
                 s("Track", &[(KeyTrack, "Key"), (VelFilter, "Velocity")]),
             ],
             &[
-                s("Filter env", &[(FilterAttack, "Attack"), (FilterDecay, "Decay"), (FilterSustain, "Sustain"), (FilterRelease, "Release")]),
-                s("Amp env", &[(AmpAttack, "Attack"), (AmpDecay, "Decay"), (AmpSustain, "Sustain"), (AmpRelease, "Release")]),
+                s(
+                    "Filter env",
+                    &[
+                        (FilterAttack, "Attack"),
+                        (FilterDecay, "Decay"),
+                        (FilterSustain, "Sustain"),
+                        (FilterRelease, "Release"),
+                    ],
+                ),
+                s(
+                    "Amp env",
+                    &[(AmpAttack, "Attack"), (AmpDecay, "Decay"), (AmpSustain, "Sustain"), (AmpRelease, "Release")],
+                ),
             ],
         ],
     },
@@ -82,12 +108,24 @@ pub const PAGES: &[Page] = &[
         name: "Mod",
         rows: [
             &[
-                s("LFO 1", &[(Lfo1Rate, "Rate"), (Lfo1Shape, "Shape"), (Lfo1Pitch, "›Pitch"), (Lfo1Filter, "›Filter"), (Lfo1Amp, "›Amp")]),
+                s(
+                    "LFO 1",
+                    &[
+                        (Lfo1Rate, "Rate"),
+                        (Lfo1Shape, "Shape"),
+                        (Lfo1Pitch, "›Pitch"),
+                        (Lfo1Filter, "›Filter"),
+                        (Lfo1Amp, "›Amp"),
+                    ],
+                ),
                 s("LFO 3", &[(Lfo3Rate, "Rate"), (Lfo3Shape, "Shape"), (Lfo3Pan, "›Pan")]),
             ],
             &[
                 s("LFO 2", &[(Lfo2Rate, "Rate"), (Lfo2Shape, "Shape"), (Lfo2Pitch, "›Pitch"), (Lfo2Filter, "›Filter")]),
-                s("FM env", &[(ModAttack, "Attack"), (ModDecay, "Decay"), (ModSustain, "Sustain"), (ModRelease, "Release")]),
+                s(
+                    "FM env",
+                    &[(ModAttack, "Attack"), (ModDecay, "Decay"), (ModSustain, "Sustain"), (ModRelease, "Release")],
+                ),
             ],
         ],
     },
@@ -112,7 +150,16 @@ pub const PAGES: &[Page] = &[
         rows: [
             &[s(
                 "Macros",
-                &[(Macro1, "1"), (Macro2, "2"), (Macro3, "3"), (Macro4, "4"), (Macro5, "5"), (Macro6, "6"), (Macro7, "7"), (Macro8, "8")],
+                &[
+                    (Macro1, "1"),
+                    (Macro2, "2"),
+                    (Macro3, "3"),
+                    (Macro4, "4"),
+                    (Macro5, "5"),
+                    (Macro6, "6"),
+                    (Macro7, "7"),
+                    (Macro8, "8"),
+                ],
             )],
             &[
                 s("LFO 1", &[(Lfo1Sync, "Sync"), (Lfo1Division, "Division")]),

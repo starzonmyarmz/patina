@@ -99,7 +99,8 @@ fn relaunch(output: Option<String>, midi_input: Option<String>) {
 }
 
 fn args(output: Option<&str>, midi_input: Option<&str>) -> Vec<String> {
-    let mut args = vec!["Patina".to_string(), "--backend".into(), "core-audio".into(), "--period-size".into(), PERIOD.into()];
+    let mut args =
+        vec!["Patina".to_string(), "--backend".into(), "core-audio".into(), "--period-size".into(), PERIOD.into()];
     args.extend(["--sample-rate".into(), sample_rate(output).to_string()]);
     if let Some(o) = output {
         args.extend(["--output-device".into(), o.to_string()]);

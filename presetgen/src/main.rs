@@ -2,11 +2,11 @@ mod archetypes;
 mod check;
 
 use archetypes::{descriptor, Archetype, Category, Vary, ARCHETYPES, NEUTRAL};
-use std::collections::HashSet;
-use std::path::PathBuf;
 use patina::params::{PlainValues, Values};
 use patina::presets::{matrix_from, Bank, MacroDef, MacroTarget, Preset, FORMAT};
 use patina::ratings::{Ratings, Verdict};
+use std::collections::HashSet;
+use std::path::PathBuf;
 
 const SEED: u64 = 0x1000_5EED;
 const VARIATIONS: usize = 6;
@@ -77,7 +77,11 @@ fn macros_for(category: Category) -> Vec<MacroDef> {
         .iter()
         .map(|m| MacroDef {
             name: m.name.to_string(),
-            targets: m.targets.iter().map(|&(pid, amount)| MacroTarget { param: pid.spec().id.into(), amount }).collect(),
+            targets: m
+                .targets
+                .iter()
+                .map(|&(pid, amount)| MacroTarget { param: pid.spec().id.into(), amount })
+                .collect(),
         })
         .collect()
 }
@@ -193,7 +197,11 @@ fn main() {
                             let macros = c.preset.macros.clone();
                             let category = c.preset.category.clone();
                             let tags = std::mem::take(&mut c.preset.tags);
-                            c.preset = Preset { tags, author: "factory".into(), ..Preset::capture(&name, &category, &c.values, &macros) };
+                            c.preset = Preset {
+                                tags,
+                                author: "factory".into(),
+                                ..Preset::capture(&name, &category, &c.values, &macros)
+                            };
                             result
                         })
                         .collect::<Vec<_>>()
@@ -214,7 +222,16 @@ fn main() {
             }
         }
     }
-    for c in [Category::Bass, Category::Lead, Category::Pad, Category::Pluck, Category::Keys, Category::Bell, Category::Brass, Category::Texture] {
+    for c in [
+        Category::Bass,
+        Category::Lead,
+        Category::Pad,
+        Category::Pluck,
+        Category::Keys,
+        Category::Bell,
+        Category::Brass,
+        Category::Texture,
+    ] {
         println!("{:8} {}", c.name(), kept.iter().filter(|p| p.category == c.name()).count());
     }
     println!("kept {} of {}, rejected {rejected}", kept.len(), kept.len() + rejected);
