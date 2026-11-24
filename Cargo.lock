@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "patina"
-version = "1.1.2"
+version = "2.0.0"
 dependencies = [
  "baseview",
  "keyboard-types",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "patina-app"
-version = "1.1.2"
+version = "2.0.0"
 dependencies = [
  "cpal",
  "midir",

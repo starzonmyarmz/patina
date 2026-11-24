@@ -4,6 +4,8 @@ What changed for people using Patina, newest first. Code-only work stays in the 
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-23
+
 ### Added
 - A MIDI Control Center template (`docs/Patina.minilabmk2`), so setting up the MiniLab is one import instead of about 40 controls by hand.
 
