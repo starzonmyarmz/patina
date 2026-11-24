@@ -1,4 +1,4 @@
-_commit: b753eee
+_commit: 1a8afac
 _src_path: gh:starzonmyarmz/project-kit
 app_id: com.iamdanielmarino.patina
 author: Daniel Marino
@@ -13,6 +13,7 @@ public: true
 screenshot: false
 ships:
 - github-release
+sponsors: true
 stack: vst-plugin
 starter: false
 voice_doc: false
